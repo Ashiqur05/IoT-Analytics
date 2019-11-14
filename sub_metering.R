@@ -76,7 +76,7 @@ tail(yr_2010)
 #----------------------------------------------------------------------------
 ## Combine tables into one dataframe using dplyr
 #create a primary data frame that ONLY includes the data frames that span an entire year.
-newDF <- bind_rows(yr_2007, yr_2008, yr_2009)
+newDF <- bind_rows(yr_2007, yr_2008, yr_2009,yr_2010)
 #newDF$Date <- format(as.Date(newDF$Date, format = "%Y-%m-%d"), "%d-%m-%Y")
 
 
@@ -85,6 +85,7 @@ summary(newDF)
 str(newDF)
 head(newDF)
 tail(newDF)
+dim(newDF)
 #----------------------------------------------------------------------------
   
 ## Combine Date and Time attribute values in a new attribute column
@@ -93,11 +94,15 @@ newDF<-mutate(newDF, DateTime = paste(newDF$Date,newDF$Time))
 
 
 head(newDF)
+tail(newDF)
+dim(newDF)
 
 
 ## Move the DateTime attribute within the dataset
 newDF <- newDF[,c(ncol(newDF), 1:(ncol(newDF)-1))]
 head(newDF)
+tail(newDF)
+dim(newDF)
 
 ## Convert DateTime from POSIXlt to POSIXct 
 newDF$DateTime <- as.POSIXct(newDF$DateTime, "%Y/%m/%d %H:%M:%S")
@@ -106,14 +111,22 @@ class(newDF$DateTime)
 tz(newDF$DateTime)
 
 head(newDF)
-## Add the time zone
+tail(newDF)
+dim(newDF)
+## Add the time zone----------
 attr(newDF$DateTime, "tzone") <- "Europe/Paris"
 class(newDF$DateTime)
 tz(newDF$DateTime)
 
-## Inspect the data types
+## Inspect the data types-----------
 str(newDF)
 head(newDF)
+tail(newDF)
+dim(newDF)
+
+
+#-check range of time covered by data set
+range(newDF$DateTime)
 
 
 ## Create "year" "quarter" "month" "week" "weekday" "day" "hour" and "minute" attribute with lubridate
@@ -129,7 +142,7 @@ newDF$hour <- hour(newDF$DateTime)
 newDF$minute <- minute(newDF$DateTime)
 
 
-MonthLst <- c('Jan', 'Feb', 'Mar','Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep',
+#MonthLst <- c('Jan', 'Feb', 'Mar','Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep',
               'Oct', 'Nov','Dec', 'Jan')
 
 WkdayLst <- c('Mon', 'Tues', 'Wed', 'Thurs', 'Fri')
@@ -155,8 +168,112 @@ as_tibble(newDF)
 str(newDF)
 
 # Create tidy tibble
-house_pwr_tidy <- house_pwr %>%
-  gather(Meter, Watt_hr, `Sub-Meter-1`, `Sub-Meter-2`, `Sub-Meter-3`)
+newDF_tidy <- newDF %>%
+  gather(Meter, Watt_hr,  `Sub_metering_1`,`Sub_metering_2`,`Sub_metering_3`,`Engy_remain`)
+
+newDF_tidy %>% as_tibble(newDF_tidy)
+is_tibble(newDF_tidy)
+
+newDF_tidy$Meter <- factor(newDF_tidy$Meter)
 
 
+newDF_tidy$id<-NULL
+newDF_tidy$Date<-NULL
+newDF_tidy$Time<-NULL
+newDF_tidy$year<-NULL
+newDF_tidy$month<-NULL
+newDF_tidy$quarter<-NULL
+newDF_tidy$week<-NULL
+newDF_tidy$day<-NULL
+newDF_tidy$hour<-NULL
+newDF_tidy$minute<-NULL
 
+glimpse(newDF_tidy)
+tail(newDF_tidy)
+
+house_pwrMtrs <- select(newDF, DateTime, `Sub_metering_1`, `Sub_metering_2`, `Sub_metering_3`, `Engy_remain`) %>%
+  group_by(year(DateTime), day(DateTime), month(DateTime), hour(DateTime), minute(DateTime))
+
+# Exploratory Data Analysis
+# Proportional and Line Plots across sub-metered zones---
+###- Year-Proportional Plot of total energy across sub-metered zones
+
+# Year_Proportional Plot
+Year_Proportional<-newDF_tidy %>%
+  group_by(year(DateTime), Meter) %>% 
+  summarise(sum=sum(Watt_hr)) %>% 
+  ggplot(aes(x=factor(`year(DateTime)`), sum, group=Meter,fill=Meter)) +
+  labs(x='Year', y='Proportion of Energy Usage') +
+  ggtitle('Proportion of Total Yearly Energy Consumption') +
+  geom_bar(stat='identity', position='fill', color='black') 
+  theme(panel.border=element_rect(colour='black', fill=NA)) +
+  theme(text = element_text(size = 14))
+Year_Proportional
+
+##-Year_Line Plot
+Year_line<-newDF_tidy %>%
+  group_by(year(DateTime), Meter) %>%
+  summarise(sum=sum(Watt_hr/1000)) %>%
+  ggplot(aes(x=factor(`year(DateTime)`), sum, group=Meter, colour=Meter)) +
+  labs(x='Year', y='kWh') +
+  ggtitle('Total Yearly Energy Consumption') +
+  geom_line(size=1)
+Year_line
+
+##-Year Bar Char
+Year_bar<-newDF_tidy %>%
+  group_by(year(DateTime), Meter) %>%
+  summarise(sum=round(sum(Watt_hr/1000),3)) %>%
+  ggplot(aes(x=factor(`year(DateTime)`), y=sum)) +
+  labs(x='Year', y='kWh') +
+  ggtitle('Total Energy Useage by Year') +
+  geom_bar(stat='identity', aes(fill = Meter), colour='black')
+Year_bar
+
+#Quarter bar  plot
+Quarter_bar<-newDF_tidy %>%
+
+  filter(year(DateTime)<2010) %>%
+  #mutate(quarter=quarter(DateTime)) %>%
+  group_by(quarter(DateTime), Meter) %>%
+  summarise(sum=round(sum(Watt_hr/1000),3)) %>%
+  ggplot(aes(x=factor(`quarter(DateTime)`), y=sum)) +
+  labs(x='Quarter of the Year', y='Wh') +
+  ggtitle('Total Quarterly Energy Consumption') +
+  geom_bar(stat='identity', aes(fill = Meter), color='black')
+Quarter_bar
+
+
+#Quarter Proportion plot
+Quarter_Proportion<-newDF_tidy %>%
+  
+  group_by(quarter(DateTime), Meter) %>%
+  #filter(quarter(DateTime)<3) %>%
+  summarise(sum=round(sum(Watt_hr)/1000),3, na.rm=TRUE) %>%
+  ggplot(aes(x=factor(`quarter(DateTime)`), sum, group = Meter, fill=Meter)) +
+  labs(x='Quarter of the Year', y='kWh') +
+  ggtitle('Proportion of Total Quarterly Energy Consumption') +
+  geom_bar(stat='identity', position='fill', color='black')
+Quarter_Proportion
+
+###-Month- Proportional Plot
+Month_Proportional<-newDF_tidy %>%
+  mutate(Month=lubridate::month(DateTime, label=TRUE, abbr=TRUE)) %>%
+  group_by(Month, Meter) %>%
+  summarise(sum=sum(Watt_hr/1000)) %>%
+  ggplot(aes(x=factor(Month), sum, group=Meter,fill=Meter)) +
+  labs(x='Month of the Year', y='Proportion of Monthly Energy Useage') +
+  ggtitle('Proportion of Total Monthly Energy Useage') +
+  geom_bar(stat='identity', position='fill', color='black')
+Month_Proportional
+
+###-Month- Line Plot
+Month_line<-newDF_tidy %>%
+  mutate(Month=lubridate::month(DateTime, label=TRUE, abbr=TRUE)) %>%
+  group_by(Month, Meter) %>%
+  summarise(sum=sum(Watt_hr/1000)) %>%
+  ggplot(aes(x=factor(Month), sum, group=Meter, colour=Meter)) +
+  labs(x='Month of the Year', y='Wh') +
+  ggtitle('Average Monthly Energy Useage') +
+  geom_line(size=1) +
+  geom_line()
