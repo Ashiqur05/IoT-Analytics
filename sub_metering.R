@@ -1,7 +1,12 @@
-# Load library
+# Load Packages-------------------------------------------------
 library(RMySQL)
 library(dplyr)
 library(lubridate)
+library(VIM) #Aids visualization and imputing of missing values
+library(funModeling)
+library(ggplot2)
+library(reshape2)
+library(caret)      #R modeling workhorse & ggplot2
 
 # Create a database connection 
 con = dbConnect(MySQL(), user='deepAnalytics', 
@@ -96,13 +101,20 @@ head(newDF)
 ## Convert DateTime from POSIXlt to POSIXct 
 newDF$DateTime <- as.POSIXct(newDF$DateTime, "%Y/%m/%d %H:%M:%S")
 
+class(newDF$DateTime)
+tz(newDF$DateTime)
+
 head(newDF)
 ## Add the time zone
 attr(newDF$DateTime, "tzone") <- "Europe/Paris"
+class(newDF$DateTime)
+tz(newDF$DateTime)
 
 ## Inspect the data types
 str(newDF)
 head(newDF)
+
+
 ## Create "year" "quarter" "month" "week" "weekday" "day" "hour" and "minute" attribute with lubridate
 
 
@@ -116,4 +128,30 @@ newDF$hour <- hour(newDF$DateTime)
 newDF$minute <- minute(newDF$DateTime)
 
 
+MonthLst <- c('Jan', 'Feb', 'Mar','Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep',
+              'Oct', 'Nov','Dec', 'Jan')
+
+WkdayLst <- c('Mon', 'Tues', 'Wed', 'Thurs', 'Fri')
+
+WkLst <- c('Sun','Mon', 'Tues', 'Wed', 'Thurs', 'Fri', 'Sat', 'Sun' )
+
+WkndList <- c('Sat', 'Sun', 'Mon')
+
+
+# Assess missing values
+aggr_plot <- aggr(newDF, col=c('navyblue','red'), numbers=TRUE, sortVars=TRUE, labels=names(newDF),cex.axis=.7,
+                  gap=3, ylab=c("Histogram of missing data","Pattern"), digits=2)
+
+
+
+?# count and Remove rows with NA's
+
 head(newDF)
+dim(newDF)
+sum(is.na(newDF))
+
+
+newDF <- na.omit(newDF)
+sum(is.na(newDF))
+
+
