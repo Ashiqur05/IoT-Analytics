@@ -2,11 +2,12 @@
 library(RMySQL)
 library(dplyr)
 library(lubridate)
-library(VIM) #Aids visualization and imputing of missing values
+library(VIM)        #Aids visualization and imputing of missing values
 library(funModeling)
 library(ggplot2)
 library(reshape2)
 library(caret)      #R modeling workhorse & ggplot2
+library(tidyverse)  #Package for tidying datalibrary(magrittr)   #Enables piping
 
 # Create a database connection 
 con = dbConnect(MySQL(), user='deepAnalytics', 
@@ -141,17 +142,21 @@ WkndList <- c('Sat', 'Sun', 'Mon')
 # Assess missing values
 aggr_plot <- aggr(newDF, col=c('navyblue','red'), numbers=TRUE, sortVars=TRUE, labels=names(newDF),cex.axis=.7,
                   gap=3, ylab=c("Histogram of missing data","Pattern"), digits=2)
-
-
-
-?# count and Remove rows with NA's
-
-head(newDF)
-dim(newDF)
-sum(is.na(newDF))
-
-
+newDF_NA <- newDF[rowSums(is.na(newDF))>0,]
 newDF <- na.omit(newDF)
 sum(is.na(newDF))
+
+# Add feature representing remaining active energy consumed every minute (watt hour)
+newDF <- newDF %>%
+  mutate(Engy_remain=(Global_active_power*1000/60)-
+           `Sub_metering_1` - `Sub_metering_2` - `Sub_metering_3`)
+head(newDF)
+as_tibble(newDF)
+str(newDF)
+
+# Create tidy tibble
+house_pwr_tidy <- house_pwr %>%
+  gather(Meter, Watt_hr, `Sub-Meter-1`, `Sub-Meter-2`, `Sub-Meter-3`)
+
 
 
