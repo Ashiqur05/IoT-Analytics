@@ -497,4 +497,189 @@ housePWR_mnth <- newDF %>%
 
 #-Look at top several rows of new monthly data set
 head(housePWR_mnth)
+--------------------------------------------------------------
+  #-Subset Year
+  housePWR_yr <- newDF %>%
+
+  #filter(year(DateTime)<2010) %>%
+  group_by(year(DateTime)) %>%
+  summarise(Sub_Meter_1=round(sum(`Sub_metering_1`/1000, na.rm=TRUE), 3),
+            Sub_Meter_2=round(sum(`Sub_metering_2`/1000, na.rm=TRUE), 3),
+            Sub_Meter_3=round(sum(`Sub_metering_3`/1000, na.rm=TRUE), 3),
+            first_DateTime = first(DateTime))
+housePWR_yr
+
+#-Subset Semester
+housePWR_semstr <- newDF %>%
+
+  group_by(year(DateTime),semester(DateTime)) %>%
+  summarise(Sub_Meter_1=round(sum(`Sub_metering_1`/1000, na.rm=TRUE), 3),
+            Sub_Meter_2=round(sum(`Sub_metering_2`/1000, na.rm=TRUE), 3),
+            Sub_Meter_3=round(sum(`Sub_metering_3`/1000, na.rm=TRUE), 3),
+            first_DateTime = first(DateTime))
+housePWR_semstr
+
+#-Subset Week of year
+housePWR_wkofYr <- newDF %>%
+  #filter(year(DateTime)>2006) %>%
+  #filter(year(DateTime)<2010) %>%
+  mutate(DofWk=lubridate::wday(DateTime, label=TRUE, abbr=TRUE)) %>%
+  group_by(year(DateTime),week(DateTime)) %>%
+  summarise(Sub_Meter_1=round(sum(`Sub_metering_1`/1000, na.rm=TRUE), 3),
+            Sub_Meter_2=round(sum(`Sub_metering_2`/1000, na.rm=TRUE), 3),
+            Sub_Meter_3=round(sum(`Sub_metering_3`/1000, na.rm=TRUE), 3),
+            first_DateTime = first(DateTime))
+housePWR_wkofYr
+
+#-Subset by day of week
+housePWR_dofWk <- newDF %>%
+  #filter(year(DateTime)>2006) %>%
+  #filter(year(DateTime)<2010) %>%
+  mutate(DofWk=lubridate::wday(DateTime, label=TRUE, abbr=TRUE)) %>%
+  group_by(week(DateTime),DofWk) %>%
+  summarise(Sub_Meter_1=round(sum(`Sub_metering_1`/1000, na.rm=TRUE), 3),
+            Sub_Meter_2=round(sum(`Sub_metering_2`/1000, na.rm=TRUE), 3),
+            Sub_Meter_3=round(sum(`Sub_metering_3`/1000, na.rm=TRUE), 3),
+            first_DateTime = first(DateTime),
+            last_DateTime = last(DateTime))
+housePWR_dofWk
+
+#-Subset hour of day
+housePWR_hofDay <- newDF %>%
+
+  #filter((minute(DateTime) %% 5) == 0) %>%
+  group_by(wday(DateTime), hour(DateTime)) %>%
+  summarise(Sub_Meter_1=round(sum(`Sub_metering_1`/1000, na.rm=TRUE), 3),
+            Sub_Meter_2=round(sum(`Sub_metering_2`/1000, na.rm=TRUE), 3),
+            Sub_Meter_3=round(sum(`Sub_metering_3`/1000, na.rm=TRUE), 3),
+            first_DateTime = first(DateTime))
+housePWR_hofDay
+
+#-Subset by Weekends
+housePWR_wknd <- newDF %>%
+  #filter(year(DateTime)>2006) %>%
+  #filter(year(DateTime)<2010) %>%
+  mutate(Wknd=lubridate::wday(DateTime, label=TRUE, abbr=TRUE)) %>%
+  filter(Wknd == c('Sat', 'Sun')) %>%
+  group_by(Wknd, hour(DateTime)) %>%
+  summarise(Sub_Meter_1=round(sum(`Sub_metering_1`/1000, na.rm=TRUE), 3),
+            Sub_Meter_2=round(sum(`Sub_metering_2`/1000, na.rm=TRUE), 3),
+            Sub_Meter_3=round(sum(`Sub_metering_3`/1000, na.rm=TRUE), 3),
+            first_DateTime = first(DateTime)) %>%
+  arrange(desc(Wknd))
+housePWR_wknd
+
+#Convert to Time Series and Plot
+#-Create quarterly time series 
+housePWR_qtrTS <- ts(housePWR_qtr[,3:5],
+                     frequency=4,
+                     start=c(2007,1),
+                     end=c(2010,3))
+
+#-Plot quarterly time series
+plot(housePWR_qtrTS, 
+     plot.type='s',
+     col=c('red', 'green', 'blue'),
+     main='Total Quarterly kWh Consumption (2007-2010)',
+     xlab='Year', ylab = 'kWh')
+minor.tick(nx=4)
+#-Create legend
+b <- c('Sub-meter-1', 'Sub-meter-2', 'Sub-meter-3')
+legend('topleft', b, col=c('red', 'green', 'blue'), lwd=2, bty='n')
+
+
+#-Create monthly time series
+housePWR_mnthTS <- ts(housePWR_mnth[,3:5],
+                      frequency = 12,
+                      start=c(2007,1),
+                      end=c(2010,11))
+
+#-Plot monthly time series
+plot(housePWR_mnthTS, 
+     plot.type='s',
+     xlim=c(2007, 2011),
+     col=c('red', 'green', 'blue'),
+     main='Total Monthly kWh Consumption',
+     xlab='Year/Month', ylab = 'kWh')
+minor.tick(nx=12)
+#-Create legend
+b <- c('Sub-meter-1', 'Sub-meter-2', 'Sub-meter-3')
+legend('topleft', b, col=c('red', 'green', 'blue'), lwd=2, bty='n')
+
+#Semester_TS
+housePWR_semstrTS <- ts(housePWR_semstr[,3:5], 
+                        frequency = 2, start=c(2007,1), 
+                        end=c(2010,1))
+
+plot(housePWR_semstrTS, plot.type='s', #xaxt='n',
+     #xaxp = c(2007, 2010, 3),
+     col=c('red', 'green', 'blue'),
+     main='Total Energy Consumption by Semester',
+     xlab='Year', ylab = 'kWh')
+b <- c('Sub-meter-1', 'Sub-meter-2', 'Sub-meter-3')
+legend('topleft', b, col=c('red', 'green', 'blue'), lwd=2, bty='n')
+
+# Year_TS
+housePWR_yrTS <- ts(housePWR_yr[,2:4], frequency = 1, start=c(2007))
+plot(housePWR_yrTS, plot.type='s', #xaxt='n',
+     #xaxp = c(2007, 2010, 3),
+     col=c('red', 'green', 'blue'),
+     main='Total Yearly kWh Consumption (2007-2010)',
+     xlab='Year', ylab = 'kWh')
+b <- c('Sub-meter-1', 'Sub-meter-2', 'Sub-meter-3')
+legend('topleft', b, col=c('red', 'green', 'blue'), lwd=2, bty='n')
+
+
+
+
+# Week of the year_TS
+housePWR_wkofYrTS <- ts(housePWR_wkofYr[,3:5], frequency =53, start=c(2006,51), end=c(2010,47))
+plot(housePWR_wkofYrTS, plot.type='s', #xaxt='n',
+     #xaxp = c(1, 13, 12),
+     col=c('red', 'green', 'blue'),
+     xlab ='Year', ylab = 'kWh',
+     #ylim=c(0,120),
+     main='Total Energy Consumption by Week of the Year')
+#axis(side=1, at= c(1, 2,3,4,5,6,7,8,9,10,11,12,13), labels=MonthLst)
+minor.tick(nx=52)
+b <- c('Sub-meter-1', 'Sub-meter-2', 'Sub-meter-3')
+legend('topleft', b, col=c('red', 'green', 'blue'), lwd=2, bty='n')
+
+
+#Day of Week_TS
+housePWR_dofWkTS <- ts(housePWR_dofWk[,3:5], frequency =7, start=c(1,1))
+plot(housePWR_dofWkTS, plot.type='s', #xaxt='n',
+     col=c('red', 'green', 'blue'),
+     xlab ='Week of Year', ylab = 'kWh',
+     xlim = c(1,53) , ylim=c(0,75),
+     main='Total Energy Consumption by Day of Week')
+minor.tick(nx=7)
+b <- c('Sub-meter-1', 'Sub-meter-2', 'Sub-meter-3')
+legend('topleft', b, col=c('red', 'green', 'blue'), lwd=2, bty='n')
+
+
+# Hour of Day_TS
+housePWR_hofDayTS <- ts(housePWR_hofDay[,3:5], frequency=24, start=c(0,0))
+plot(housePWR_hofDayTS, plot.type='s',
+     #xaxp = c(0,48, 47),
+     col=c('red', 'green', 'blue'),
+     xlab='Day', ylab = 'kWh',
+     main='Total kWh Consumption by Hour of the Day')
+minor.tick(nx=24)
+b <- c('Sub-meter-1', 'Sub-meter-2', 'Sub-meter-3')
+legend('topleft', b, col=c('red', 'green', 'blue'), lwd=2, bty='n')
+
+# Hour_Weekend_TS
+housePWR_wkndTS <- ts(housePWR_wknd[,3:5], frequency=24, end(1,23))
+plot(housePWR_wkndTS, plot.type='s', xaxt='n',
+     xaxp = c(0, 3,2),
+     xlim=c(1,3),
+     col=c('red', 'green', 'blue'),
+     xlab='Weekend Day', ylab = 'kWh',
+     ylim=c(0,90),
+     main='Total Weekend Energy Consumption by Hour')
+axis(side = 1, at = c(1,2,3), labels = WkndList)
+minor.tick(nx=24)
+b <- c('Sub-meter-1', 'Sub-meter-2', 'Sub-meter-3')
+legend('topleft', b, col=c('red', 'green', 'blue'), lwd=2, bty='n')
 
