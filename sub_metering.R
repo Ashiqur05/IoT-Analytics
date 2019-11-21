@@ -105,11 +105,16 @@ head(newDF)
 tail(newDF)
 dim(newDF)
 
+##Rename submeter
+
+newDF<-newDF%>% dplyr::rename(Kitchen_stuff=Sub_metering_1, Laundry=Sub_metering_2, w_heater_AC=Sub_metering_3) 
+
 ## Convert DateTime from POSIXlt to POSIXct 
 newDF$DateTime <- as.POSIXct(newDF$DateTime, "%Y/%m/%d %H:%M:%S")
 
 class(newDF$DateTime)
 tz(newDF$DateTime)
+head(newDF$DateTime)
 
 head(newDF)
 tail(newDF)
@@ -163,20 +168,20 @@ sum(is.na(newDF))
 # Add feature representing remaining active energy consumed every minute (watt hour)
 newDF <- newDF %>%
   mutate(Engy_remain=(Global_active_power*1000/60)-
-           `Sub_metering_1` - `Sub_metering_2` - `Sub_metering_3`)
+           `Kitchen_stuff` - `Laundry` - `w_heater_AC`)
 head(newDF)
 as_tibble(newDF)
 str(newDF)
 
 # Create tidy tibble
 newDF_tidy <- newDF %>%
-  gather(Meter, Watt_hr,  `Sub_metering_1`,`Sub_metering_2`,`Sub_metering_3`,`Engy_remain`)
+  gather(Meter, Watt_hr,  `Kitchen_stuff`,`Laundry`,`w_heater_AC`,`Engy_remain`)
 
 newDF_tidy %>% as_tibble(newDF_tidy)
 is_tibble(newDF_tidy)
 
 newDF_tidy$Meter <- factor(newDF_tidy$Meter)
-
+newDF_tidy %>% as_tibble(newDF_tidy)
 
 newDF_tidy$id<-NULL
 newDF_tidy$Date<-NULL
@@ -192,7 +197,7 @@ newDF_tidy$minute<-NULL
 glimpse(newDF_tidy)
 tail(newDF_tidy)
 
-house_pwrMtrs <- select(newDF, DateTime, `Sub_metering_1`, `Sub_metering_2`, `Sub_metering_3`, `Engy_remain`) %>%
+house_pwrMtrs <- select(newDF, DateTime, `Kitchen_stuff`, `Laundry`, `w_heater_AC`, `Engy_remain`) %>%
   group_by(year(DateTime), day(DateTime), month(DateTime), hour(DateTime), minute(DateTime))
 
 # Exploratory Data Analysis
@@ -234,14 +239,14 @@ Year_bar
 #Quarter bar  plot
 Quarter_bar<-newDF_tidy %>%
 
-  filter(year(DateTime)<2010) %>%
+  filter(year(DateTime)<2010) %>% #some missing value in 2010
   #mutate(quarter=quarter(DateTime)) %>%
   group_by(quarter(DateTime), Meter) %>%
   summarise(sum=round(sum(Watt_hr/1000),3)) %>%
   ggplot(aes(x=factor(`quarter(DateTime)`), y=sum)) +
-  labs(x='Quarter of the Year', y='Wh') +
+  labs(x='Quarter of the Year', y='kWh') +
   ggtitle('Total Quarterly Energy Consumption') +
-  geom_bar(stat='identity', aes(fill = Meter), color='black')
+  geom_bar(position="dodge",stat='identity', aes(fill = Meter), color='black')
 Quarter_bar
 
 
@@ -266,6 +271,7 @@ Month_Proportional<-newDF_tidy %>%
   labs(x='Month of the Year', y='Proportion of Monthly Energy Useage') +
   ggtitle('Proportion of Total Monthly Energy Useage') +
   geom_bar(stat='identity', position='fill', color='black')
+
 Month_Proportional
 
 ###-Month- Line Plot
@@ -274,7 +280,7 @@ Month_line<-newDF_tidy %>%
   group_by(Month, Meter) %>%
   summarise(sum=sum(Watt_hr/1000)) %>%
   ggplot(aes(x=factor(Month), sum, group=Meter, colour=Meter)) +
-  labs(x='Month of the Year', y='Wh') +
+  labs(x='Month of the Year', y='kWh') +
   ggtitle('Average Monthly Energy Useage') +
   geom_line(size=1) +
   geom_line()
@@ -305,10 +311,118 @@ week_line<-newDF_tidy %>%
   geom_line(size=1) +
   geom_line()
 week_line
+#---------------------------------------------------############-----------------------------------------------
+hour_line<-newDF_tidy %>%
+  
+  group_by(hour(DateTime), Meter) %>%
+  summarise(sum=round(sum(Watt_hr)/1000),3) %>%
+  ggplot(aes(x=factor(`hour(DateTime)`), sum, group=Meter,colour=Meter)) +
+  labs(x='houre of the day', y='kWh') +
+  ggtitle('Total Energy Usage by houre of the day') +
+  theme(axis.text.x = element_text(angle=90)) +
+  geom_line(size=1) +
+  geom_line()
+hour_line
+
+x<-filter(newDF,year(DateTime) == 2008 & month(DateTime) == 3 & day(DateTime) == 31)
+hour_bar_h <- 
+  x %>%
+  group_by(hour = hour(DateTime)) %>% 
+  summarise(w_heater_AC = sum(w_heater_AC)) %>% 
+  ggplot(aes(x = hour, w_heater_AC)) +
+  labs(x = '09/07/2008', y = 'wh') +
+  ggtitle('energy consumption for each day') +
+  geom_bar(stat = "identity",colour='red',fill='blue')
+hour_bar_h
+
+hour_bar_l <- 
+  x %>%
+  group_by(hour = hour(DateTime)) %>% 
+  summarise(w_heater_AC = sum(Laundry)) %>% 
+  ggplot(aes(x = hour, w_heater_AC)) +
+  labs(x = '09/07/2008', y = 'wh') +
+  ggtitle('energy consumption for each day') +
+  geom_bar(stat = "identity",colour='red',fill='blue')
+hour_bar_l
+
+hour_bar_k <- 
+  x %>%
+  group_by(hour = hour(DateTime)) %>% 
+  summarise(w_heater_AC = sum(Kitchen_stuff)) %>% 
+  ggplot(aes(x = hour, w_heater_AC)) +
+  labs(x = '09/07/2008', y = 'wh') +
+  ggtitle('energy consumption for each day') +
+  geom_bar(stat = "identity",colour='red',fill='blue')
+hour_bar_k
+
+hour_line <- 
+  x %>%
+  ggplot(aes(DateTime)) +
+  labs(x = '09/07/2008', y = 'wh') +
+  ggtitle('energy consumption for each day') +
+  theme(axis.text.x = element_text(angle=90)) +
+  geom_line(aes(y=w_heater_AC)) +
+  geom_line()
+hour_line
+
+y<-filter(x,hour(DateTime) == 0 | hour(DateTime) == 2 | hour(DateTime) == 3)
+
+hour_line_3 <- 
+  y %>%
+  ggplot(aes(DateTime, w_heater_AC)) +
+  labs(x = '09/07/2008', y = 'wh') +
+  ggtitle('energy consumption for each day') +
+  geom_line()
+hour_line_3
+
+hour_line_4 <- 
+  y %>%
+  ggplot(aes(DateTime, Kitchen_stuff)) +
+  labs(x = '09/07/2008', y = 'wh') +
+  ggtitle('energy consumption for each day') +
+  geom_line()
+hour_line_4
+
+
+hour_line_min <- 
+  x %>%
+  filter(hour(DateTime) == c(18:24)) %>%
+  #ggplot(aes(hour(DateTime), w_heater_AC))
+  #filter(Meter == 'w_heater_AC') %>% 
+  #group_by(hour = hour(DateTime)) 
+  ggplot(aes(hour(DateTime), w_heater_AC)) +
+  labs(x = '09/07/2008', y = 'wh') +
+  ggtitle('energy consumption for each day') +
+  geom_line()
+hour_line_min
+
+
+ww <- newDF_tidy %>%
+  filter(week(DateTime) == c(18:25)) %>%
+  filter(Meter == 'w_heater_AC') %>% 
+  mutate(Day=lubridate::wday(DateTime, label=TRUE, abbr=TRUE)) %>%
+  group_by(Day, Meter) %>%
+  summarise(sum=sum(Watt_hr/1000))
+ww
+
+Specific_day<-newDF %>%
+  filter(year(DateTime) == 2008 & month(DateTime) == 7 & day(DateTime) == 9) %>% 
+
+  summarise(sum=sum(Watt_hr/1000)) %>%
+  ggplot(aes(x=factor(`day(DateTime)`), sum, group=Meter,colour=Meter)) +
+  labs(x='Day of the Month', y='Avg Watt Hour Useage') +
+  ggtitle('Average Daily Watt Hour Useage') +
+  geom_line(size=1) +
+  geom_line()
+day_line
+
+
+
+#-----------------------------------------------#####################-----------------------------------------
 
 #Week of the year- bar plot
 week_bar<-newDF_tidy %>%
-  #filter(year(DateTime)>2006) %>%
+  #filter(year(DateTime)<2006) %>%
   group_by(week(DateTime), Meter) %>%
   summarise(sum=sum(Watt_hr/1000)) %>%
   ggplot(aes(x=factor(`week(DateTime)`), y=sum)) +
@@ -348,7 +462,7 @@ D_W_line<-newDF_tidy %>%
   group_by(Day, Meter) %>%
   summarise(sum=sum(Watt_hr/1000)) %>%
   ggplot(aes(x=factor(Day), sum, group=Meter, colour=Meter)) +
-  labs(x='Day of the Week', y='Wh') +
+  labs(x='Day of the Week', y='kWh') +
   ggtitle('Average Daily Energy Consumption') +
   geom_line(size=1) +
   geom_line()
@@ -371,7 +485,7 @@ Weekend_bar <-newDF_tidy %>%
   filter(weekend==c('Saturday','Sunday')) %>%
   group_by(weekend, Meter) %>%
   summarise(sum=sum(Watt_hr/1000)) %>%
-  ggplot(aes(x=factor(weekend), sum, group=Meter,fill=Meter)) +
+  ggplot(aes(x=factor(weekend), y=sum, group=Meter,fill=Meter)) +
   labs(x='Weekend Day', y='Proportion of Energy Useage') +
   ggtitle('Proportion of Average Energy Consumption by Weekend Day') +
   geom_bar(stat='identity', position='fill', color='black')
@@ -454,7 +568,7 @@ sum(is.na(newDF_tidy$Watt_hr))
 #-Subset data for weeks 1-8 and assign to variable w
 w <- newDF_tidy %>%
   filter(week(DateTime) == c(1:8)) %>%
-  filter(Meter == 'Sub_metering_3') %>% 
+  filter(Meter == 'w_heater_AC') %>% 
   mutate(Day=lubridate::wday(DateTime, label=TRUE, abbr=TRUE)) %>%
   group_by(Day, Meter) %>%
   summarise(sum=sum(Watt_hr/1000))
@@ -463,7 +577,7 @@ w
 #-Subset data for weeks 18-25 and assign to variable ww
 ww <- newDF_tidy %>%
   filter(week(DateTime) == c(18:25)) %>%
-  filter(Meter == 'Sub_metering_3') %>% 
+  filter(Meter == 'w_heater_AC') %>% 
   mutate(Day=lubridate::wday(DateTime, label=TRUE, abbr=TRUE)) %>%
   group_by(Day, Meter) %>%
   summarise(sum=sum(Watt_hr/1000))
@@ -485,15 +599,15 @@ ggplot(w) +
 #-Subset data by quarter and summarise total usage across the 3 submeters
 housePWR_qtr <- newDF %>%
   group_by(year(DateTime), quarter(DateTime)) %>%
-  summarise(Sub_Meter_1=round(sum(`Sub_metering_1`/1000), 3),
-            Sub_Meter_2=round(sum(`Sub_metering_2`/1000), 3),
-            Sub_Meter_3=round(sum(`Sub_metering_3`/1000), 3))
+  summarise(Kitchen_stuff=round(sum(`Kitchen_stuff`/1000), 3),
+            Laundry =round(sum(`Laundry`/1000), 3),
+            w_heater_AC=round(sum(`w_heater_AC`/1000), 3))
 housePWR_qtr
 housePWR_mnth <- newDF %>%
   group_by(year(DateTime), month(DateTime)) %>%
-  summarise(Sub_Meter_1=round(sum(`Sub_metering_1`/1000), 3),
-            Sub_Meter_2=round(sum(`Sub_metering_2`/1000), 3),
-            Sub_Meter_3=round(sum(`Sub_metering_3`/1000), 3))
+  summarise(Kitchen_stuff=round(sum(`Kitchen_stuff`/1000), 3),
+            Laundry=round(sum(`Laundry`/1000), 3),
+            w_heater_AC=round(sum(`w_heater_AC`/1000), 3))
 
 #-Look at top several rows of new monthly data set
 head(housePWR_mnth)
@@ -503,9 +617,9 @@ head(housePWR_mnth)
 
   #filter(year(DateTime)<2010) %>%
   group_by(year(DateTime)) %>%
-  summarise(Sub_Meter_1=round(sum(`Sub_metering_1`/1000, na.rm=TRUE), 3),
-            Sub_Meter_2=round(sum(`Sub_metering_2`/1000, na.rm=TRUE), 3),
-            Sub_Meter_3=round(sum(`Sub_metering_3`/1000, na.rm=TRUE), 3),
+  summarise(Kitchen_stuff=round(sum(`Kitchen_stuff`/1000, na.rm=TRUE), 3),
+            Laundry=round(sum(`Laundry`/1000, na.rm=TRUE), 3),
+            w_heater_AC=round(sum(`w_heater_AC`/1000, na.rm=TRUE), 3),
             first_DateTime = first(DateTime))
 housePWR_yr
 
@@ -513,9 +627,9 @@ housePWR_yr
 housePWR_semstr <- newDF %>%
 
   group_by(year(DateTime),semester(DateTime)) %>%
-  summarise(Sub_Meter_1=round(sum(`Sub_metering_1`/1000, na.rm=TRUE), 3),
-            Sub_Meter_2=round(sum(`Sub_metering_2`/1000, na.rm=TRUE), 3),
-            Sub_Meter_3=round(sum(`Sub_metering_3`/1000, na.rm=TRUE), 3),
+  summarise(Kitchen_stuff=round(sum(`Kitchen_stuff`/1000, na.rm=TRUE), 3),
+            Laundry=round(sum(`Laundry`/1000, na.rm=TRUE), 3),
+            w_heater_AC=round(sum(`w_heater_AC`/1000, na.rm=TRUE), 3),
             first_DateTime = first(DateTime))
 housePWR_semstr
 
@@ -525,9 +639,9 @@ housePWR_wkofYr <- newDF %>%
   #filter(year(DateTime)<2010) %>%
   mutate(DofWk=lubridate::wday(DateTime, label=TRUE, abbr=TRUE)) %>%
   group_by(year(DateTime),week(DateTime)) %>%
-  summarise(Sub_Meter_1=round(sum(`Sub_metering_1`/1000, na.rm=TRUE), 3),
-            Sub_Meter_2=round(sum(`Sub_metering_2`/1000, na.rm=TRUE), 3),
-            Sub_Meter_3=round(sum(`Sub_metering_3`/1000, na.rm=TRUE), 3),
+  summarise(Kitchen_stuff=round(sum(`Kitchen_stuff`/1000, na.rm=TRUE), 3),
+            Laundry=round(sum(`Laundry`/1000, na.rm=TRUE), 3),
+            w_heater_AC=round(sum(`w_heater_AC`/1000, na.rm=TRUE), 3),
             first_DateTime = first(DateTime))
 housePWR_wkofYr
 
@@ -537,9 +651,9 @@ housePWR_dofWk <- newDF %>%
   #filter(year(DateTime)<2010) %>%
   mutate(DofWk=lubridate::wday(DateTime, label=TRUE, abbr=TRUE)) %>%
   group_by(week(DateTime),DofWk) %>%
-  summarise(Sub_Meter_1=round(sum(`Sub_metering_1`/1000, na.rm=TRUE), 3),
-            Sub_Meter_2=round(sum(`Sub_metering_2`/1000, na.rm=TRUE), 3),
-            Sub_Meter_3=round(sum(`Sub_metering_3`/1000, na.rm=TRUE), 3),
+  summarise(Kitchen_stuff=round(sum(`Kitchen_stuff`/1000, na.rm=TRUE), 3),
+            Laundry=round(sum(`Laundry`/1000, na.rm=TRUE), 3),
+            w_heater_AC=round(sum(`w_heater_AC`/1000, na.rm=TRUE), 3),
             first_DateTime = first(DateTime),
             last_DateTime = last(DateTime))
 housePWR_dofWk
@@ -549,9 +663,9 @@ housePWR_hofDay <- newDF %>%
 
   #filter((minute(DateTime) %% 5) == 0) %>%
   group_by(wday(DateTime), hour(DateTime)) %>%
-  summarise(Sub_Meter_1=round(sum(`Sub_metering_1`/1000, na.rm=TRUE), 3),
-            Sub_Meter_2=round(sum(`Sub_metering_2`/1000, na.rm=TRUE), 3),
-            Sub_Meter_3=round(sum(`Sub_metering_3`/1000, na.rm=TRUE), 3),
+  summarise(Kitchen_stuff=round(sum(`Kitchen_stuff`/1000, na.rm=TRUE), 3),
+            Laundry=round(sum(`Laundry`/1000, na.rm=TRUE), 3),
+            w_heater_AC=round(sum(`w_heater_AC`/1000, na.rm=TRUE), 3),
             first_DateTime = first(DateTime))
 housePWR_hofDay
 
@@ -562,14 +676,16 @@ housePWR_wknd <- newDF %>%
   mutate(Wknd=lubridate::wday(DateTime, label=TRUE, abbr=TRUE)) %>%
   filter(Wknd == c('Sat', 'Sun')) %>%
   group_by(Wknd, hour(DateTime)) %>%
-  summarise(Sub_Meter_1=round(sum(`Sub_metering_1`/1000, na.rm=TRUE), 3),
-            Sub_Meter_2=round(sum(`Sub_metering_2`/1000, na.rm=TRUE), 3),
-            Sub_Meter_3=round(sum(`Sub_metering_3`/1000, na.rm=TRUE), 3),
+  summarise(Kitchen_stuff=round(sum(`Kitchen_stuff`/1000, na.rm=TRUE), 3),
+            Laundry=round(sum(`Laundry`/1000, na.rm=TRUE), 3),
+            w_heater_AC=round(sum(`w_heater_AC`/1000, na.rm=TRUE), 3),
             first_DateTime = first(DateTime)) %>%
   arrange(desc(Wknd))
 housePWR_wknd
 
-#Convert to Time Series and Plot
+
+
+#Convert to Time Series and Plot---------------------------------------------------------------------------
 #-Create quarterly time series 
 housePWR_qtrTS <- ts(housePWR_qtr[,3:5],
                      frequency=4,
@@ -584,7 +700,7 @@ plot(housePWR_qtrTS,
      xlab='Year', ylab = 'kWh')
 minor.tick(nx=4)
 #-Create legend
-b <- c('Sub-meter-1', 'Sub-meter-2', 'Sub-meter-3')
+b <- c('Kitchen_stuff', 'Laundry', ' w_heater_AC')
 legend('topleft', b, col=c('red', 'green', 'blue'), lwd=2, bty='n')
 
 
@@ -603,7 +719,7 @@ plot(housePWR_mnthTS,
      xlab='Year/Month', ylab = 'kWh')
 minor.tick(nx=12)
 #-Create legend
-b <- c('Sub-meter-1', 'Sub-meter-2', 'Sub-meter-3')
+b <- c('Kitchen_stuff', 'Laundry', 'w_heater_AC')
 legend('topleft', b, col=c('red', 'green', 'blue'), lwd=2, bty='n')
 
 #Semester_TS
@@ -616,7 +732,7 @@ plot(housePWR_semstrTS, plot.type='s', #xaxt='n',
      col=c('red', 'green', 'blue'),
      main='Total Energy Consumption by Semester',
      xlab='Year', ylab = 'kWh')
-b <- c('Sub-meter-1', 'Sub-meter-2', 'Sub-meter-3')
+b <- c('Kitchen_stuff', 'Laundry', 'w_heater_AC')
 legend('topleft', b, col=c('red', 'green', 'blue'), lwd=2, bty='n')
 
 # Year_TS
@@ -626,7 +742,7 @@ plot(housePWR_yrTS, plot.type='s', #xaxt='n',
      col=c('red', 'green', 'blue'),
      main='Total Yearly kWh Consumption (2007-2010)',
      xlab='Year', ylab = 'kWh')
-b <- c('Sub-meter-1', 'Sub-meter-2', 'Sub-meter-3')
+b <- c('Kitchen_stuff', 'Laundry', 'w_heater_AC')
 legend('topleft', b, col=c('red', 'green', 'blue'), lwd=2, bty='n')
 
 
@@ -642,7 +758,7 @@ plot(housePWR_wkofYrTS, plot.type='s', #xaxt='n',
      main='Total Energy Consumption by Week of the Year')
 #axis(side=1, at= c(1, 2,3,4,5,6,7,8,9,10,11,12,13), labels=MonthLst)
 minor.tick(nx=52)
-b <- c('Sub-meter-1', 'Sub-meter-2', 'Sub-meter-3')
+b <- c('Kitchen_stuff', 'Laundry', 'w_heater_AC')
 legend('topleft', b, col=c('red', 'green', 'blue'), lwd=2, bty='n')
 
 
@@ -654,7 +770,7 @@ plot(housePWR_dofWkTS, plot.type='s', #xaxt='n',
      xlim = c(1,53) , ylim=c(0,75),
      main='Total Energy Consumption by Day of Week')
 minor.tick(nx=7)
-b <- c('Sub-meter-1', 'Sub-meter-2', 'Sub-meter-3')
+b <- c('Kitchen_stuff', 'Laundry', 'w_heater_AC')
 legend('topleft', b, col=c('red', 'green', 'blue'), lwd=2, bty='n')
 
 
@@ -666,13 +782,13 @@ plot(housePWR_hofDayTS, plot.type='s',
      xlab='Day', ylab = 'kWh',
      main='Total kWh Consumption by Hour of the Day')
 minor.tick(nx=24)
-b <- c('Sub-meter-1', 'Sub-meter-2', 'Sub-meter-3')
+b <- c('Kitchen_stuff', 'Laundry', 'w_heater_AC')
 legend('topleft', b, col=c('red', 'green', 'blue'), lwd=2, bty='n')
 
 # Hour_Weekend_TS
 housePWR_wkndTS <- ts(housePWR_wknd[,3:5], frequency=24, end(1,23))
 plot(housePWR_wkndTS, plot.type='s', xaxt='n',
-     xaxp = c(0, 3,2),
+    # xaxp = c(0, 3,2),
      xlim=c(1,3),
      col=c('red', 'green', 'blue'),
      xlab='Weekend Day', ylab = 'kWh',
@@ -680,6 +796,6 @@ plot(housePWR_wkndTS, plot.type='s', xaxt='n',
      main='Total Weekend Energy Consumption by Hour')
 axis(side = 1, at = c(1,2,3), labels = WkndList)
 minor.tick(nx=24)
-b <- c('Sub-meter-1', 'Sub-meter-2', 'Sub-meter-3')
+b <- c('Kitchen_stuff', 'Laundry', 'w_heater_AC')
 legend('topleft', b, col=c('red', 'green', 'blue'), lwd=2, bty='n')
 
