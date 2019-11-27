@@ -174,3 +174,22 @@ sum(is.na(newDF))
 #newDF <- na.omit(newDF)
 #sum(is.na(newDF))
 ```
+##### Add feature representing remaining active energy consumed every minute (watt hour)
+```{r remaining_energy}
+newDF <- newDF %>%
+         mutate(Engy_remain=(Global_active_power*1000/60)-
+           `Kitchen_stuff` - `Laundry` - `w_heater_AC`)
+head(newDF,2)
+```
+##### Create tidy tibble
+In the data set’s current form, each observation or row contains data for each of the sub-meters. To aid the visualization of the submeter data on the same chart, the gather() function is used to create a new column ‘Meter’ which contains the names of the submeters. The observed values for the submeters are placed in the newly-created ‘Watt_hr’ column
+```{r tidy}
+newDF_tidy <- newDF %>%
+  gather(Meter, Watt_hr,  `Kitchen_stuff`,`Laundry`,`w_heater_AC`,`Engy_remain`)
+#newDF_tidy %>% as_tibble(newDF_tidy)
+               #is_tibble(newDF_tidy)
+
+newDF_tidy$Meter <- factor(newDF_tidy$Meter) #change data type character to factor
+head(newDF_tidy %>% as_tibble(newDF_tidy),2)
+#head(glimpse(newDF_tidy),2)
+```
