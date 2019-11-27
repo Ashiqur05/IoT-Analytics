@@ -99,7 +99,7 @@ tail(yr_2010)
 ```
 The year 2010 doesn't have the entire year Data. It has 15 days of missing data.
 
-## Data Preparation
+## Process the Data
 create a primary data frame that ONLY includes the data frames that span an entire year.
 ```{r Combine_tables}
 newDF <- bind_rows(yr_2007, yr_2008, yr_2009)
@@ -193,3 +193,290 @@ newDF_tidy$Meter <- factor(newDF_tidy$Meter) #change data type character to fact
 head(newDF_tidy %>% as_tibble(newDF_tidy),2)
 #head(glimpse(newDF_tidy),2)
 ```
+##  Explore the Data
+
+#### Visualizations of Energy Usage Across Sub-Meters and Time Periods
+###### Year_Proportional Plot
+```{r Year_Proportional}
+Year_Proportional<-newDF_tidy %>%
+  filter(year(DateTime)<2010) %>%
+  group_by(year(DateTime), Meter) %>% 
+  summarise(sum=sum(Watt_hr)) %>% 
+  ggplot(aes(x=factor(`year(DateTime)`), sum, group=Meter,fill=Meter)) +
+  labs(x='Year', y='Proportion of Energy Usage') +
+  ggtitle('Proportion of Total Yearly Energy Consumption') +
+  geom_bar(stat='identity',  position='fill', color='black') 
+  #theme(panel.border=element_rect(colour='black', fill=NA)) +
+  #theme(text = element_text(size = 14))
+Year_Proportional
+```
+
+###### Year Bar plot
+```{r Year_bar}
+Year_bar<-newDF_tidy %>%
+  filter(year(DateTime)<2010) %>%
+  group_by(year(DateTime), Meter) %>%
+  summarise(sum=round(sum(Watt_hr/1000),3)) %>%
+  ggplot(aes(x=factor(`year(DateTime)`), y=sum)) +
+  labs(x='Year', y='kWh') +
+  ggtitle('Total Energy Useage by Year') +
+  geom_bar(stat='identity', aes(fill = Meter), colour='black')
+Year_bar
+```
+###### Year_Line Plot
+```{r Year_line}
+Year_line<-newDF_tidy %>%
+  filter(year(DateTime)<2010) %>%
+  group_by(year(DateTime), Meter) %>%
+  summarise(sum=sum(Watt_hr/1000)) %>%
+  ggplot(aes(x=factor(`year(DateTime)`), sum, group=Meter, colour=Meter)) +
+  labs(x='Year', y='kWh') +
+  ggtitle('Total Yearly Energy Consumption') +
+  geom_line(size=1)
+Year_line
+```
+###### Quarter bar  plot
+```{r Quarter_bar}
+Quarter_bar<-newDF_tidy %>%
+  filter(year(DateTime)<2010) %>% #some missing value in 2010
+  #mutate(quarter=quarter(DateTime)) %>%
+  group_by(quarter(DateTime), Meter) %>%
+  summarise(sum=round(sum(Watt_hr/1000),3)) %>%
+  ggplot(aes(x=factor(`quarter(DateTime)`), y=sum)) +
+  labs(x='Quarter of the Year', y='kWh') +
+  ggtitle('Total Quarterly Energy Consumption') +
+  geom_bar(position="dodge",stat='identity', aes(fill = Meter), color='black')
+Quarter_bar
+```
+
+###### Quarter Proportion plot
+```{r Quarter_Proportion}
+Quarter_Proportion<-newDF_tidy %>%
+  filter(year(DateTime)<2010) %>%
+  group_by(quarter(DateTime), Meter) %>%
+  #filter(quarter(DateTime)<3) %>%
+  summarise(sum=round(sum(Watt_hr)/1000),3, na.rm=TRUE) %>%
+  ggplot(aes(x=factor(`quarter(DateTime)`), sum, group = Meter, fill=Meter)) +
+  labs(x='Quarter of the Year', y='kWh') +
+  ggtitle('Proportion of Total Quarterly Energy Consumption') +
+  geom_bar(stat='identity', position='fill', color='black')
+Quarter_Proportion
+```
+
+###### Month Proportional Plot
+```{r Month_Proportional}
+Month_Proportional<-newDF_tidy %>%
+  filter(year(DateTime)<2010) %>%
+  mutate(Month=lubridate::month(DateTime, label=TRUE, abbr=TRUE)) %>%
+  group_by(Month, Meter) %>%
+  summarise(sum=sum(Watt_hr/1000)) %>%
+  ggplot(aes(x=factor(Month), sum, group=Meter,fill=Meter)) +
+  labs(x='Month of the Year', y='Proportion of Monthly Energy Useage') +
+  ggtitle('Proportion of Total Monthly Energy Useage') +
+  geom_bar(stat='identity', position='fill', color='black')
+Month_Proportional
+```
+
+##### Month Line Plot
+```{r Month_Line }
+  Month_line<-newDF_tidy %>%
+  mutate(Month=lubridate::month(DateTime, label=TRUE, abbr=TRUE)) %>%
+  group_by(Month, Meter) %>%
+  summarise(sum=sum(Watt_hr/1000)) %>%
+  ggplot(aes(x=factor(Month), sum, group=Meter, colour=Meter)) +
+  labs(x='Month of the Year', y='kWh') +
+  ggtitle('Average Monthly Energy Useage') +
+  geom_line(size=1) +
+  geom_line()
+Month_line
+```
+
+##### Month bar chart
+```{r Month_bar }
+  Month_bar<-newDF_tidy %>%
+  filter(year(DateTime)<2010) %>%
+  mutate(Month=lubridate::month(DateTime, label=TRUE, abbr=TRUE)) %>%
+  group_by(Month, Meter) %>%
+  summarise(sum=round(sum(Watt_hr)/1000),3) %>%
+  ggplot(aes(x=factor(Month), y=sum)) +
+  labs(x='Month of the Year', y='kWh') +
+  ggtitle('Total Energy Useage by Month of the Year') +
+  geom_bar(stat='identity', aes(fill = Meter), colour='black')
+Month_bar
+```
+##### Week of the year- line plot
+```{r week_line }
+  week_line<-newDF_tidy %>%
+  filter(year(DateTime)<2010) %>%
+  group_by(week(DateTime), Meter) %>%
+  summarise(sum=round(sum(Watt_hr)/1000),3) %>%
+  ggplot(aes(x=factor(`week(DateTime)`), sum, group=Meter,colour=Meter)) +
+  labs(x='Week of the Year', y='kWh') +
+  ggtitle('Total Energy Usage by Week of the Year') +
+  theme(axis.text.x = element_text(angle=90)) +
+  geom_line(size=1) +
+  geom_line()
+week_line
+```
+##### Week of the year- bar plot
+```{r week_bar }
+week_bar<-newDF_tidy %>%
+  filter(year(DateTime)<2010) %>%
+  group_by(week(DateTime), Meter) %>%
+  summarise(sum=sum(Watt_hr/1000)) %>%
+  ggplot(aes(x=factor(`week(DateTime)`), y=sum)) +
+  labs(x='Week of the Year', y='kWh') +
+  ggtitle('Total Energy Usage by Week of the Year') +
+  theme(axis.text.x = element_text(angle=90)) +
+  geom_bar(stat='identity', aes(fill=Meter), colour='black')
+week_bar
+```
+##### Day of the Month- Line Plot
+#Not informative
+```{r week_line_m }
+day_line<-newDF_tidy %>%
+  filter(year(DateTime)<2010) %>%
+  group_by(day(DateTime), Meter) %>%
+  summarise(sum=sum(Watt_hr/1000)) %>%
+  ggplot(aes(x=factor(`day(DateTime)`), sum, group=Meter,colour=Meter)) +
+  labs(x='Day of the Month', y='Avg Watt Hour Useage') +
+  ggtitle('Average Daily Watt Hour Useage') +
+  geom_line(size=1) +
+  geom_line()
+day_line
+```
+##### Day of Week- Porportional Plot
+```{r week_line_d }
+D_W_portion<-newDF_tidy %>%
+  filter(year(DateTime)<2010) %>%
+  mutate(Day=lubridate::wday(DateTime, label=TRUE, abbr=TRUE)) %>%
+  group_by(Day, Meter) %>%
+  summarise(sum=sum(Watt_hr/1000)) %>%
+  ggplot(aes(x=factor(Day), sum, group=Meter,fill=Meter)) +
+  labs(x='Day of the Week', y='Proportion of Energy Useage') +
+  ggtitle('Proportion of Total Daily Energy Consumption') +
+  geom_bar(stat='identity', position='fill', color='black')
+D_W_portion
+```
+##### Day of Week- line
+```{r D_W_line }
+D_W_line<-newDF_tidy %>%
+  filter(year(DateTime)<2010) %>%
+  mutate(Day=lubridate::wday(DateTime, label=TRUE, abbr=TRUE)) %>%
+  group_by(Day, Meter) %>%
+  summarise(sum=sum(Watt_hr/1000)) %>%
+  ggplot(aes(x=factor(Day), sum, group=Meter, colour=Meter)) +
+  labs(x='Day of the Week', y='kWh') +
+  ggtitle('Average Daily Energy Consumption') +
+  geom_line(size=1) +
+  geom_line()
+D_W_line
+```
+##### Day of Week bar chart
+```{r week_line_d }
+D_W_bar<-newDF_tidy %>%
+  filter(year(DateTime)<2010) %>%
+  mutate(Day=lubridate::wday(DateTime, label=TRUE, abbr=TRUE)) %>%
+  group_by(Day, Meter) %>%
+  summarise(sum=sum(Watt_hr/1000)) %>%
+  ggplot(aes(x=factor(Day), y=sum)) +
+  labs(x='Day of the Week', y='kWh') +
+  ggtitle('Total Energy Useage by Day of Week') +
+  geom_bar(stat='identity', aes(fill = Meter), colour='black')
+D_W_bar
+```
+
+##### Weekend bar chart
+```{r week_line_d }
+Weekend_bar <-newDF_tidy %>%
+  filter(year(DateTime)<2010) %>%
+  mutate(weekend=lubridate::wday(DateTime, label=TRUE, abbr=FALSE)) %>%
+  filter(weekend==c('Saturday','Sunday')) %>%
+  group_by(weekend, Meter) %>%
+  summarise(sum=sum(Watt_hr/1000)) %>%
+  ggplot(aes(x=factor(weekend), y=sum, group=Meter,fill=Meter)) +
+  labs(x='Weekend Day', y='Proportion of Energy Useage') +
+  ggtitle('Proportion of Average Energy Consumption by Weekend Day') +
+  geom_bar(stat='identity', position='fill', color='black')
+Weekend_bar
+
+```
+##### Hour of the Day- Proportional Plot
+```{r week_line_d }
+Hour_day<-newDF_tidy %>%
+  filter(year(DateTime)<2010) %>%
+  group_by(hour(DateTime), Meter) %>%
+  summarise(sum=sum(Watt_hr/1000)) %>%
+  ggplot(aes(x=factor(`hour(DateTime)`), sum, group=Meter,fill=Meter)) +
+  labs(x='Hour of the Day', y='Proportion of Energy Useage') +
+  ggtitle('Proportion of Average Hourly Energy Consumption') +
+  geom_bar(stat='identity', position='fill', color='black')
+Hour_day
+
+```
+##### Hour of the Day-Line Plot
+```{r week_line_d }
+Hour_day_line<-newDF_tidy %>%
+  filter(year(DateTime)<2010) %>%
+  group_by(hour(DateTime), Meter) %>%
+  summarise(sum=round(mean(Watt_hr), 3)) %>%
+  ggplot(aes(x=factor(`hour(DateTime)`), sum, group=Meter,colour=Meter)) +
+  labs(x='Hour of the Day', y='Wh') +
+  ggtitle('Average Hourly Energy Consumption') +
+  geom_line(size=1) +
+  geom_line()
+Hour_day_line
+
+```
+
+##### Hour of day bar chart
+```{r week_line_d }
+Hour_day_bar<-newDF_tidy %>%
+  filter(year(DateTime)<2010) %>%
+  group_by(hour(DateTime), Meter) %>%
+  summarise(sum=round(sum(Watt_hr)/1000),3) %>%
+  ggplot(aes(x=factor(`hour(DateTime)`), y=sum)) +
+  labs(x='Hour of the Day', y='kWh') +
+  ggtitle('Total Energy Useage by Hour of the Day') +
+  geom_bar(stat='identity', aes(fill = Meter), colour='black')
+Hour_day_bar
+
+```
+#### Winter
+###### Filter and plot data for weeks 1-8
+```{r week_line_d }
+winter_plot<-newDF_tidy %>%
+  filter(year(DateTime)<2010) %>%
+  filter(week(DateTime) == c(1:8)) %>%
+  mutate(Day=lubridate::wday(DateTime, label=TRUE, abbr=TRUE)) %>%
+  group_by(Day, Meter) %>%
+  summarise(sum=sum(Watt_hr/1000)) %>%
+  ggplot(aes(x=factor(Day), y=sum)) +
+  labs(x='Day of the Week', y='kWh') +
+  ylim(0,200) +
+  ggtitle('Total Energy Usage by Day for Weeks of \nHigh Consumption in Winter Months') +
+  geom_bar(stat='identity', aes(fill = Meter), colour='black') +
+  theme(panel.border=element_rect(colour='black', fill=NA)) +
+  theme(text = element_text(size = 14))
+winter_plot
+```
+
+#### Summer
+###### Filter and plot data for weeks 18-25
+```{r week_line_d }
+summer_plot<-newDF_tidy %>%
+  filter(week(DateTime) == c(18:25)) %>%
+  mutate(Day=lubridate::wday(DateTime, label=TRUE, abbr=TRUE)) %>%
+  group_by(Day, Meter) %>%
+  summarise(sum=sum(Watt_hr/1000)) %>%
+  ggplot(aes(x=factor(Day), y=sum)) +
+  labs(x='Day of the Week', y='kWh') +
+  #ylim(0,85) +
+  ggtitle('Total Energy Usage by Day for Weeks of \nHigh Consumptionin Summer Months') +
+  geom_bar(stat='identity', aes(fill = Meter), colour='black') +
+  theme(panel.border=element_rect(colour='black', fill=NA)) +
+  theme(text = element_text(size = 14))
+summer_plot
+#sum(is.na(newDF_tidy$Watt_hr))
+```
+### Summary Plot(Summer and Winter)
