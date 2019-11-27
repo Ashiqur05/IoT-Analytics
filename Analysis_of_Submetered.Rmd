@@ -151,10 +151,26 @@ class(newDF$DateTime)
 tz(newDF$DateTime)
 head(newDF,2)
 
-## Add the time zone----------
+## Add the time zone
 attr(newDF$DateTime, "tzone") <- "Europe/Paris"
 class(newDF$DateTime)
 tz(newDF$DateTime)
 head(newDF,2)
 tail(newDF,2)
+#-check range of time covered by data set
+range(newDF$DateTime)
+```
+#### Assess missing values
+```{r missing_values}
+sum(is.na(newDF))
+#aggr_plot <- aggr(newDF, col=c('navyblue','red'), 
+                  #numbers=TRUE, 
+                  #sortVars=TRUE, 
+                  #labels=names(newDF),
+                  #cex.axis=.7,
+                  #gap=3, 
+                  #ylab=c("Histogram of missing data","Pattern"), digits=2)
+#newDF_NA <- newDF[rowSums(is.na(newDF))>0,]
+#newDF <- na.omit(newDF)
+#sum(is.na(newDF))
 ```
