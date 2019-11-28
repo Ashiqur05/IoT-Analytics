@@ -1,0 +1,303 @@
+---
+title: "Time_series_Energy_data"
+author: "Ashiqur"
+date: "11/28/2019"
+output: html_document
+---
+
+```{r setup, include=TRUE}
+knitr::opts_chunk$set(message = FALSE)
+knitr::opts_chunk$set(echo = TRUE)
+```
+## Load Packages
+
+```{r library}
+library(RMySQL)
+library(dplyr)
+library(lubridate)
+library(VIM)        #Aids visualization and imputing of missing values
+library(funModeling)
+library(ggplot2)
+library(reshape2)
+library(caret)      #R modeling workhorse & ggplot2
+library(tidyverse)  #Package for tidying datalibrary(magrittr)   #Enables piping
+library(GGally)
+library(plotly)
+library(ggfortify)
+```
+## Data Connection & Retrieving Data
+##### Create a database connection 
+```{r load_data}
+con = dbConnect(MySQL(), user='deepAnalytics', 
+                password='Sqltask1234!', 
+                dbname='dataanalytics2018', 
+                host='data-analytics-2018.cbrosir2cswx.us-east-1.rds.amazonaws.com')
+```
+
+### List the tables contained in the database
+```{r table}
+dbListTables(con)
+```
+### Lists attributes contained in a table
+```{r attributes}
+dbListFields(con,'yr_2006')
+```
+
+## Request relevant data base tables
+
+#### Use asterisk to specify all attributes for download
+
+```{r pressure}
+yr_2006 <- dbGetQuery(con, "SELECT * FROM yr_2006")
+yr_2007 <- dbGetQuery(con, "SELECT * FROM yr_2007")
+yr_2008 <- dbGetQuery(con, "SELECT * FROM yr_2008")
+yr_2009 <- dbGetQuery(con, "SELECT * FROM yr_2009")
+yr_2010 <- dbGetQuery(con, "SELECT * FROM yr_2010")
+```
+## Load Data
+create a primary data frame that ONLY includes the data frames that span an entire year.
+```{r Combine_tables}
+newDF <- bind_rows(yr_2007, yr_2008, yr_2009)
+```
+yr_2006 and yr_2010 has been excluded, no data for complete year
+##visualization 
+
+One of the goals of subsetting for visualizations is to adjust granularity to maximize the information to be gained. Granularity describes the frequency of observations within a time series data set
+#### Convert DateTime from POSIXlt to POSIXct 
+Convert data type of new DateTime feature
+```{r convert}
+newDF$DateTime <- as.POSIXct(newDF$DateTime, "%Y/%m/%d %H:%M:%S")
+#-Check class of new DateTime feature
+class(newDF$DateTime)
+tz(newDF$DateTime)
+head(newDF,2)
+
+## Add the time zone
+attr(newDF$DateTime, "tzone") <- "Europe/Paris"
+class(newDF$DateTime)
+tz(newDF$DateTime)
+head(newDF,2)
+tail(newDF,2)
+#-check range of time covered by data set
+range(newDF$DateTime)
+```
+
+```{r Granularity}
+#plot(newDF$Kitchen_stuff)
+head(newDF,2)
+```
+Over 1,500,000 minutes from the beginning of 2007 though the end of 2009 have been plotted in this visualization.we are not getting any usefull information.
+##### Subsetting and Meaningful Time Periods
+```{r subset_week}
+## Subset the second week of 2008 - All Observations
+houseWeek <- filter(newDF, year(DateTime) == 2008 & week(DateTime) == 2)
+## Plot subset houseWeek
+plot(houseWeek$Kitchen_stuff)
+```
+There are lots of patterns to be learned from a week, but the granularity has to be right to extract this information. The ‘week’ plot above has over 10,000 observations and this granularity should probably be reduced
+
+#### Visualize a Single Day with Plotly
+```{r subset_day}
+## Subset the second week of 2008 - All Observations
+houseDay <- filter(newDF, year(DateTime) == 2008 & week(DateTime) == 2 & day(DateTime)==9)
+## Plot kitchen_stuff
+#plot(houseDay$Kitchen_stuff)
+plot_ly(houseDay, x = ~houseDay$DateTime, y = ~houseDay$Kitchen_stuff, type = 'scatter', mode = 'lines')
+```
+line plots and Plotly make much better visualizations than the basic plot function.
+
+#### 3 submeter together
+Perhaps the best way to understand the power usage on this day is to plot all three sub-meters to gain a perspective on all of the power being consumed. While we're at it let's add a legend, title and axis labels.  
+```{r subset_day_3}
+plot_ly(houseDay, x = ~houseDay$DateTime, y = ~houseDay$Kitchen_stuff, name = 'Kitchen', type = 'scatter', mode = 'lines') %>%
+ add_trace(y = ~houseDay$Laundry, name = 'Laundry Room', mode = 'lines') %>%
+ add_trace(y = ~houseDay$w_heater_AC, name = 'Water Heater & AC', mode = 'lines') %>%
+ layout(title = "Power Consumption January 9th, 2008",
+ xaxis = list(title = "Time"),
+ yaxis = list (title = "Power (watt-hours)"))
+```
+#### Reducing Granularity
+```{r subset_day_3_10}
+houseDay_10 <- filter(newDF, year(DateTime) == 2008 & week(DateTime) == 2 & day(DateTime)==9 & (minute(DateTime) == 0 | minute(DateTime) == 10 | minute(DateTime) == 20 | minute(DateTime) == 30 | minute(DateTime) == 40 | minute(DateTime) == 50))
+plot_ly(houseDay_10, x = ~houseDay_10$DateTime, y = ~houseDay_10$Kitchen_stuff, name = 'Kitchen', type = 'scatter', mode = 'lines') %>%
+ add_trace(y = ~houseDay_10$Laundry, name = 'Laundry Room', mode = 'lines') %>%
+ add_trace(y = ~houseDay_10$w_heater_AC, name = 'Water Heater & AC', mode = 'lines') %>%
+ layout(title = "Power Consumption January 9th, 2008",
+ xaxis = list(title = "Time"),
+ yaxis = list (title = "Power (watt-hours)"))
+```
+With the granularity adjusted we get a much more clear picture of the power consumption on January 9th
+
+#### week of Day
+```{r Day}
+#mutate(Day=lubridate::wday(DateTime, label=TRUE, abbr=TRUE))
+
+
+houseDay_W <- filter(newDF, year(DateTime) == 2008 & month(DateTime)== 1 & week(DateTime) == 2 & wday(DateTime))
+
+plot_ly(houseDay_W, x = ~houseDay_W$DateTime, y = ~houseDay_W$Kitchen_stuff, name = 'Kitchen', type = 'scatter', mode = 'lines') %>%
+ add_trace(y = ~houseDay_W$Laundry, name = 'Laundry Room', mode = 'lines') %>%
+ add_trace(y = ~houseDay_W$w_heater_AC, name = 'Water Heater & AC', mode = 'lines') %>%
+ layout(title = "Power Consumption January 9th, 2008",
+ xaxis = list(title = "Time"),
+ yaxis = list (title = "Power (watt-hours)"))
+```
+## Convert to Time Series and Plot
+
+###### Subset to one observation per week on Mondays at 8:00pm for 2007, 2008 and 2009
+
+```{r house070809weekly}
+house070809weekly <-
+        filter(newDF,
+               weekdays(DateTime) == "Monday" &
+                       hour(DateTime) == 20 & minute(DateTime) == 1)
+
+## Create TS object with SubMeter3
+tsSM3_070809weekly <- ts(house070809weekly$w_heater_AC, 
+                         frequency=52, 
+                         start=c(2007,1),
+                         end=c(2009,52))
+autoplot(tsSM3_070809weekly, ts.colour = 'red', xlab = "Time", ylab = "Watt Hours", main = "Sub-meter 3")
+#autoplot(tsSM3_070809weekly)
+## Plot sub-meter 3 with plot.ts
+plot.ts(tsSM3_070809weekly)
+
+```
+#### Create monthly time series
+
+```{r house070809weekly_1}
+house_monthly <- filter(newDF,year(DateTime)==2009 & month(DateTime)==1) %>% 
+        group_by(day(DateTime)) %>% 
+        summarise(kitchen = sum(Kitchen_stuff))
+
+## Create TS object with SubMeter3
+tsSM1_house_monthly <- ts(house_monthly$kitchen, 
+                         frequency=365, 
+                         start=c(2009,1),
+                         end=c(2009,31))
+autoplot(tsSM1_house_monthly, ts.colour = 'red', xlab = "Time", ylab = "Watt Hours", main = "Kitchen_stuff")
+#autoplot(tsSM3_070809weekly)
+## Plot sub-meter 3 with plot.ts
+plot.ts(tsSM1_house_monthly)
+
+```
+
+##### Subset data by year and summarise total usage across the 3 submeters(Time series)
+```{r housePWR_yr}
+  housePWR_yr <- newDF %>%
+  filter(year(DateTime)<2010) %>%
+  group_by(year(DateTime)) %>%
+  summarise(Kitchen_stuff=round(sum(`Kitchen_stuff`/1000, na.rm=TRUE), 3),
+            Laundry=round(sum(`Laundry`/1000, na.rm=TRUE), 3),
+            w_heater_AC=round(sum(`w_heater_AC`/1000, na.rm=TRUE), 3),
+            first_DateTime = first(DateTime))
+housePWR_yr
+housePWR_yrTS <- ts(housePWR_yr[,2:4], 
+                    frequency = 1, 
+                    start=c(2007))
+plot(housePWR_yrTS, plot.type='s', #xaxt='n',
+     #xaxp = c(2007, 2010, 3),
+     col=c('red', 'green', 'blue'),
+     main='Total Yearly kWh Consumption (2007-2010)',
+     xlab='Year', ylab = 'kWh')
+b <- c('Kitchen_stuff', 'Laundry', 'w_heater_AC')
+legend('topleft', b, col=c('red', 'green', 'blue'), lwd=2, bty='n')
+```
+##### Subset data by Semester and summarise total usage across the 3 submeters(Time series)
+```{r housePWR_semstr}
+  housePWR_semstr <- newDF %>%
+  filter(year(DateTime)<2010) %>%
+  group_by(year(DateTime),semester(DateTime)) %>%
+  summarise(Kitchen_stuff=round(sum(`Kitchen_stuff`/1000, na.rm=TRUE), 3),
+            Laundry=round(sum(`Laundry`/1000, na.rm=TRUE), 3),
+            w_heater_AC=round(sum(`w_heater_AC`/1000, na.rm=TRUE), 3),
+            first_DateTime = first(DateTime))
+housePWR_semstr
+
+housePWR_semstrTS <- ts(housePWR_semstr[,3:5], 
+                        frequency = 2, 
+                        start=c(2007,1),
+                        end=c(2010))
+plot(housePWR_semstrTS, plot.type='s', #xaxt='n',
+     #xaxp = c(2007, 2010, 3),
+     col=c('red', 'green', 'blue'),
+     main='Total Energy Consumption by Semester',
+     xlab='Year', ylab = 'kWh')
+b <- c('Kitchen_stuff', 'Laundry', 'w_heater_AC')
+legend('topleft', b, col=c('red', 'green', 'blue'), lwd=2, bty='n')
+
+```
+
+##### Subset data by quarter and summarise total usage across the 3 submeters(Time series)
+```{r housePWR_qtr}
+housePWR_qtr <- newDF %>%
+          filter(year(DateTime)<2010) %>%
+  group_by(year(DateTime), quarter(DateTime)) %>%
+  summarise(Kitchen_stuff=round(sum(`Kitchen_stuff`/1000), 3),
+            Laundry =round(sum(`Laundry`/1000), 3),
+            w_heater_AC=round(sum(`w_heater_AC`/1000), 3))
+housePWR_qtr
+housePWR_qtrTS <- ts(housePWR_qtr[,3:5],
+                     frequency=4,
+                     start=c(2007,1),
+                     end=c(2010))
+plot(housePWR_qtrTS, 
+     plot.type='s',
+     col=c('red', 'green', 'blue'),
+     main='Total Quarterly kWh Consumption (2007-2010)',
+     xlab='Year', ylab = 'kWh')
+minor.tick(nx=4)
+#-Create legend
+b <- c('Kitchen_stuff', 'Laundry', ' w_heater_AC')
+legend('topleft', b, col=c('red', 'green', 'blue'), lwd=2, bty='n')
+```
+##### Subset data by month and summarise total usage across the 3 submeters(Time series)
+```{r housePWR_mnth}
+housePWR_mnth <- newDF %>%
+  group_by(year(DateTime), month(DateTime)) %>%
+  summarise(Kitchen_stuff=round(sum(`Kitchen_stuff`/1000), 3),
+            Laundry=round(sum(`Laundry`/1000), 3),
+            w_heater_AC=round(sum(`w_heater_AC`/1000), 3))
+head(housePWR_mnth)
+housePWR_mnthTS <- ts(housePWR_mnth[,3:5],
+                      frequency = 12,
+                      start=c(2007,1),
+                      end=c(2010))
+plot(housePWR_mnthTS, 
+     plot.type='s',
+     xlim=c(2007, 2010),
+     col=c('red', 'green', 'blue'),
+     main='Total Monthly kWh Consumption',
+     xlab='Year/Month', ylab = 'kWh')
+minor.tick(nx=12)
+b <- c('Kitchen_stuff', 'Laundry', 'w_heater_AC')
+legend('topleft', b, col=c('red', 'green', 'blue'), lwd=2, bty='n')
+```
+##### Subset data by week of year and summarise total usage across the 3 submeters(Time series)
+```{r housePWR_wkofYr}
+housePWR_wkofYr <- newDF %>%
+  #filter(year(DateTime)>2006) %>%
+  filter(year(DateTime)<2010) %>%
+  mutate(DofWk=lubridate::wday(DateTime, label=TRUE, abbr=TRUE)) %>%
+  group_by(year(DateTime),week(DateTime)) %>%
+  summarise(Kitchen_stuff=round(sum(`Kitchen_stuff`/1000, na.rm=TRUE), 3),
+            Laundry=round(sum(`Laundry`/1000, na.rm=TRUE), 3),
+            w_heater_AC=round(sum(`w_heater_AC`/1000, na.rm=TRUE), 3),
+            first_DateTime = first(DateTime))
+housePWR_wkofYr
+housePWR_wkofYrTS <- ts(housePWR_wkofYr[,3:5], 
+                        frequency =53, start=c(2007,1), 
+                        end=c(2010))
+plot(housePWR_wkofYrTS, plot.type='s', #xaxt='n',
+     #xaxp = c(1, 13, 12),
+     col=c('red', 'green', 'blue'),
+     xlab ='Year', ylab = 'kWh',
+     #ylim=c(0,120),
+     main='Total Energy Consumption by Week of the Year')
+#axis(side=1, at= c(1, 2,3,4,5,6,7,8,9,10,11,12,13), labels=MonthLst)
+minor.tick(nx=52)
+b <- c('Kitchen_stuff', 'Laundry', 'w_heater_AC')
+legend('topleft', b, col=c('red', 'green', 'blue'), lwd=2, bty='n')
+
+
+```
