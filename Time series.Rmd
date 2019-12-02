@@ -24,6 +24,7 @@ library(tidyverse)  #Package for tidying datalibrary(magrittr)   #Enables piping
 library(GGally)
 library(plotly)
 library(ggfortify)
+library(TTR)        #Decomposing time series
 ```
 ## Data Connection & Retrieving Data
 ##### Create a database connection 
@@ -66,6 +67,7 @@ One of the goals of subsetting for visualizations is to adjust granularity to ma
 #### Convert DateTime from POSIXlt to POSIXct 
 Convert data type of new DateTime feature
 ```{r convert}
+newDF<-mutate(newDF, DateTime = paste(newDF$Date,newDF$Time))
 newDF$DateTime <- as.POSIXct(newDF$DateTime, "%Y/%m/%d %H:%M:%S")
 #-Check class of new DateTime feature
 class(newDF$DateTime)
@@ -237,6 +239,11 @@ housePWR_qtr <- newDF %>%
             Laundry =round(sum(`Laundry`/1000), 3),
             w_heater_AC=round(sum(`w_heater_AC`/1000), 3))
 housePWR_qtr
+housePWR_qtr_sma<- newDF %>%
+          filter(year(DateTime)<2010) %>%
+  group_by(year(DateTime), quarter(DateTime)) %>%
+  summarise(w_heater_AC=round(sum(`w_heater_AC`/1000), 3))
+
 housePWR_qtrTS <- ts(housePWR_qtr[,3:5],
                      frequency=4,
                      start=c(2007,1),
@@ -301,3 +308,149 @@ legend('topleft', b, col=c('red', 'green', 'blue'), lwd=2, bty='n')
 
 
 ```
+##### Subset data by day of week and summarise total usage across the 3 submeters(Time series)
+```{r housePWR_dofWk }
+housePWR_dofWk <- newDF %>%
+  #filter(year(DateTime)>2006) %>%
+  filter(year(DateTime)<2010) %>%          
+  mutate(DofWk=lubridate::wday(DateTime, label=TRUE, abbr=TRUE)) %>%
+  group_by(week(DateTime),DofWk) %>%
+  #group_by(lubridate::week(DateTime), lubridate::year(DateTime)) %>%
+  summarise(Kitchen_stuff=round(sum(`Kitchen_stuff`/1000, na.rm=TRUE), 3),
+            Laundry=round(sum(`Laundry`/1000, na.rm=TRUE), 3),
+            w_heater_AC=round(sum(`w_heater_AC`/1000, na.rm=TRUE), 3),
+            first_DateTime = first(DateTime),
+            last_DateTime = last(DateTime)) %>% 
+        arrange(first_DateTime)
+head(housePWR_dofWk)
+#tail(housePWR_dofWk)
+#Day of Week_TS
+housePWR_dofWkTS <- ts(housePWR_dofWk[,3:5], 
+                       frequency =7, 
+                       start=c(1,1))
+plot(housePWR_dofWkTS, plot.type='s', #xaxt='n',
+     col=c('red', 'green', 'blue'),
+     xlab ='Week of Year', ylab = 'kWh',
+     xlim = c(1,53) , ylim=c(0,75),
+     main='Total Energy Consumption by Day of Week')
+minor.tick(nx=7)
+b <- c('Kitchen_stuff', 'Laundry', 'w_heater_AC')
+legend('topleft', b, col=c('red', 'green', 'blue'), lwd=2, bty='n')
+
+
+```
+
+##### Subset data by hour of day and summarise total usage across the 3 submeters(Time series)
+
+```{r housePWR_hofDay }
+housePWR_hofDay <- newDF %>%
+
+  #filter((minute(DateTime) %% 5) == 0) %>%
+  group_by(wday(DateTime), hour(DateTime)) %>%
+  summarise(Kitchen_stuff=round(sum(`Kitchen_stuff`/1000, na.rm=TRUE), 3),
+            Laundry=round(sum(`Laundry`/1000, na.rm=TRUE), 3),
+            w_heater_AC=round(sum(`w_heater_AC`/1000, na.rm=TRUE), 3),
+            first_DateTime = first(DateTime))
+housePWR_hofDay
+housePWR_hofDayTS <- ts(housePWR_hofDay[,3:5], frequency=24, start=c(0,0))
+plot(housePWR_hofDayTS, plot.type='s',
+     #xaxp = c(0,48, 47),
+     col=c('red', 'green', 'blue'),
+     xlab='Day', ylab = 'kWh',
+     main='Total kWh Consumption by Hour of the Day')
+minor.tick(nx=24)
+b <- c('Kitchen_stuff', 'Laundry', 'w_heater_AC')
+legend('topleft', b, col=c('red', 'green', 'blue'), lwd=2, bty='n')
+
+```
+##### Subset data by weekend of day and summarise total usage across the 3 submeters(Time series)
+```{r }
+housePWR_wknd <- newDF %>%
+  #filter(year(DateTime)>2006) %>%
+  #filter(year(DateTime)<2010) %>%
+  mutate(Wknd=lubridate::wday(DateTime, label=TRUE, abbr=TRUE)) %>%
+  filter(Wknd == c('Sat', 'Sun')) %>%
+  group_by(Wknd, hour(DateTime)) %>%
+  summarise(Kitchen_stuff=round(sum(`Kitchen_stuff`/1000, na.rm=TRUE), 3),
+            Laundry=round(sum(`Laundry`/1000, na.rm=TRUE), 3),
+            w_heater_AC=round(sum(`w_heater_AC`/1000, na.rm=TRUE), 3),
+            first_DateTime = first(DateTime)) %>%
+  arrange(desc(Wknd))
+housePWR_wknd
+
+housePWR_wkndTS <- ts(housePWR_wknd[,3:5], frequency=24, end(1,23))
+class(housePWR_wkndTS)
+plot(housePWR_wkndTS, plot.type='s', xaxt='n',
+    # xaxp = c(0, 3,2),
+     xlim=c(1,3),
+     col=c('red', 'green', 'blue'),
+     xlab='Weekend Day', ylab = 'kWh',
+     ylim=c(0,90),
+     main='Total Weekend Energy Consumption by Hour')
+axis(side = 1, at = c(1,2,3), labels = WkndList)
+minor.tick(nx=24)
+b <- c('Kitchen_stuff', 'Laundry', 'w_heater_AC')
+legend('topleft', b, col=c('red', 'green', 'blue'), lwd=2, bty='n')
+```
+## Fit Moving Average Model to Quarterly Time Series
+```{r Moving_Average}
+# plotting time series
+plot.ts(housePWR_qtrTS)
+# Transform of time series in case of seasonal and  random flactuation 
+housePWR_qtrTS_log<-log(housePWR_qtrTS)
+dim(housePWR_qtrTS_log)
+plot.ts(housePWR_qtrTS_log)
+# In case fluctuations are present  and you  want to smooth the time series
+
+#housePWR_qtrTS<-housePWR_qtrTS[,-c(1:2)]
+#housePWR_qtrTS
+
+housePWR_qtrTS_sma3<-SMA(housePWR_qtrTS_log[,3],3)
+plot.ts(housePWR_qtrTS_sma3)
+
+
+housePWR_qtrTS_sma5<-SMA(housePWR_qtrTS_log[,3],5)
+plot.ts(housePWR_qtrTS_sma5)
+# it's giving a some good results and showing there is a trand present.so its ok for me to do the further analysis prediction based on that 
+
+housePWR_qtrTS_sma7<-SMA(housePWR_qtrTS_log[,3],7)
+plot.ts(housePWR_qtrTS_sma7)
+#more period i am using more data point i will going to lose
+```
+## Exponential Smoothing
+##### Fit Exponential Moving Average Model to Quarterly Time Series
+```{r Exponential}
+# plotting time series
+plot.ts(housePWR_qtrTS)
+# Transform of time series in case of seasonal and  random flactuation 
+housePWR_qtrTS_log<-log(housePWR_qtrTS)
+dim(housePWR_qtrTS_log)
+plot.ts(housePWR_qtrTS_log)
+# In case fluctuations are present  and you  want to smooth the time series
+
+#housePWR_qtrTS<-housePWR_qtrTS[,-c(1:2)]
+#housePWR_qtrTS
+
+housePWR_qtrTS_ema_25<-EMA(housePWR_qtrTS_log[,3],3,ratio = .25)
+plot.ts(housePWR_qtrTS_ema_25)
+
+housePWR_qtrTS_ema_5<-EMA(housePWR_qtrTS_log[,3],3,ratio = .5)
+plot.ts(housePWR_qtrTS_ema_5)
+# it's giving a some good results and showing there is a trand present.so its ok for me to do the further analysis prediction based on that 
+
+housePWR_qtrTS_ema_75<-EMA(housePWR_qtrTS_log[,3],3,ratio = .75)
+plot.ts(housePWR_qtrTS_ema_75)
+#more period i am using more data point i will going to lose
+```
+In this data set simple moving average is kind of a winner for me because with that i am able to see very clearly there is a trand that is present,there is some cyclic or random or seasonal that is present but with this Exponential Moving Average i could only see that probly there is a trand but there is a irregular component which is present in this time series.
+## Decomposition
+Decomposing the time series means separating the time series into these three components:
+```{r Decomposition}
+# plotting time series
+plot.ts(housePWR_qtrTS)
+housePWR_qtrTS_decomp<-decompose(housePWR_qtrTS[,3])
+plot(housePWR_qtrTS_decomp)
+summary(housePWR_qtrTS_decomp)
+
+```
+
