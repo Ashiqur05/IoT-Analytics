@@ -25,6 +25,7 @@ library(GGally)
 library(plotly)
 library(ggfortify)
 library(TTR)        #Decomposing time series
+library(forecast)
 ```
 ## Data Connection & Retrieving Data
 ##### Create a database connection 
@@ -61,6 +62,14 @@ create a primary data frame that ONLY includes the data frames that span an enti
 newDF <- bind_rows(yr_2007, yr_2008, yr_2009)
 ```
 yr_2006 and yr_2010 has been excluded, no data for complete year
+
+## rename submeter
+```{r rename}
+newDF<-newDF%>% dplyr::rename(Kitchen_stuff=Sub_metering_1, Laundry=Sub_metering_2, w_heater_AC=Sub_metering_3) 
+head(newDF,2)
+#newDF <- rename(newDF, Kitchen_stuff = Sub_metering_1)
+```
+
 ##visualization 
 
 One of the goals of subsetting for visualizations is to adjust granularity to maximize the information to be gained. Granularity describes the frequency of observations within a time series data set
@@ -104,7 +113,7 @@ There are lots of patterns to be learned from a week, but the granularity has to
 houseDay <- filter(newDF, year(DateTime) == 2008 & week(DateTime) == 2 & day(DateTime)==9)
 ## Plot kitchen_stuff
 #plot(houseDay$Kitchen_stuff)
-plot_ly(houseDay, x = ~houseDay$DateTime, y = ~houseDay$Kitchen_stuff, type = 'scatter', mode = 'lines')
+#plot_ly(houseDay, x = ~houseDay$DateTime, y = ~houseDay$Kitchen_stuff, type = 'scatter', mode = 'lines')
 ```
 line plots and Plotly make much better visualizations than the basic plot function.
 
@@ -387,7 +396,7 @@ plot(housePWR_wkndTS, plot.type='s', xaxt='n',
      xlab='Weekend Day', ylab = 'kWh',
      ylim=c(0,90),
      main='Total Weekend Energy Consumption by Hour')
-axis(side = 1, at = c(1,2,3), labels = WkndList)
+#axis(side = 1, at = c(1,2,3), labels = WkndList)
 minor.tick(nx=24)
 b <- c('Kitchen_stuff', 'Laundry', 'w_heater_AC')
 legend('topleft', b, col=c('red', 'green', 'blue'), lwd=2, bty='n')
@@ -452,5 +461,81 @@ housePWR_qtrTS_decomp<-decompose(housePWR_qtrTS[,3])
 plot(housePWR_qtrTS_decomp)
 summary(housePWR_qtrTS_decomp)
 
+#if random component want to remove 
+
+housePWR_qtrTS_random <- (housePWR_qtrTS[,3]) - housePWR_qtrTS_decomp$random
+plot(housePWR_qtrTS_random)
+```
+# Holt-Winter Forecasting
+To make forecasts using simple exponential smoothing, you can fit a simple exponential smoothing predictive model using the HoltWinters() function from the stats package for R. 
+```{r remove_seasonal}
+plot.ts(housePWR_qtrTS)
+#Remove Seasonal Components
+housePWR_qtrTS_seasonal <- (housePWR_qtrTS[,3]) - housePWR_qtrTS_decomp$seasonal
+plot.ts(housePWR_qtrTS_seasonal)
+autoplot(housePWR_qtrTS_seasonal)
+## Test Seasonal Adjustment by running Decompose again. Note the very, very small scale for Seasonal
+plot(decompose(housePWR_qtrTS_seasonal))
+```
+Yes there is a seasonal line, but look at the scale for the seasonal section. -1e-15 through 5e-16. That's a decimal with 15 zeros before 1. A very very small number indeed. For all practical purposes the seasonality has been removed. 
+
+##### HoltWinters Simple Exponential Smoothing
+```{r HW_smoothing}
+## Holt Winters Exponential Smoothing & Plot
+plot.ts(housePWR_qtrTS[,3])
+housePWR_qtrTS_HW_smoothing<-HoltWinters(housePWR_qtrTS[,3], beta=FALSE, gamma=FALSE)
+housePWR_qtrTS_HW_smoothing
+
+housePWR_qtrTS_HW_smoothing$fitted
+plot(housePWR_qtrTS_HW_smoothing)
+
+## HoltWinters forecast & plot
+housePWR_qtrTS_HW_smoothing_forec <- forecast(housePWR_qtrTS_HW_smoothing, h=4)
+plot(housePWR_qtrTS_HW_smoothing_forec, ylim = c(0, 1300), ylab= "Watt-Hours", xlab="Time - w_heater_ac")
+
+housePWR_qtrTS_HW_smoothing_onlyforec <- forecast(housePWR_qtrTS_HW_smoothing, h=4,level=c(12,16))
+plot(housePWR_qtrTS_HW_smoothing_forec, ylim = c(0, 1300), ylab= "Watt-Hours", xlab="Time - w_heater_ac",start(2010))
+plot.ts(housePWR_qtrTS_HW_smoothing_forec$residuals)
+
+
+```
+Less weight to the recent value and more weight to the previous value 
+
+## Time series tasting
+
+```{r ACF}
+## ACF of residuals of Holt Winters forecast
+acf(housePWR_qtrTS_HW_smoothing_forec$residuals, 
+    lag.max = 10,
+    na.action = na.pass)
+#acf(na.exclude(housePWR_qtrTS_HW_smoothing_forec$residuals),lag.max=10)
+plot(housePWR_qtrTS_HW_smoothing_forec$residuals)
 ```
 
+No lag basically touching the minimum and maximum value,so There is no significant correlation between the forecast error and the predicted values
+
+```{r pacf}
+pacf(housePWR_qtrTS_HW_smoothing_forec$residuals, 
+     lag.max = 10,
+     na.action = na.pass,
+      plot = FALSE)
+
+pacf(housePWR_qtrTS_HW_smoothing_forec$residuals, 
+     lag.max = 10,
+     na.action = na.pass)
+
+```
+```{r Ljung_box}
+#also check the for correlation
+Box.test(housePWR_qtrTS_HW_smoothing_forec$residuals, 
+         lag = 10, 
+         type = "Ljung-Box")
+plot.ts(housePWR_qtrTS_HW_smoothing_forec$residuals)
+hist(housePWR_qtrTS_HW_smoothing_forec$residuals)
+```
+p-value = 0.2401 that indicate some little bit correlation is present jot very significant .The histogram shows it's not normally distributed(Value is not aggregating near to the zero )
+
+## ARIMA Model
+```{r ARIMA }
+
+```
