@@ -361,7 +361,9 @@ housePWR_hofDay <- newDF %>%
             w_heater_AC=round(sum(`w_heater_AC`/1000, na.rm=TRUE), 3),
             first_DateTime = first(DateTime))
 housePWR_hofDay
-housePWR_hofDayTS <- ts(housePWR_hofDay[,3:5], frequency=24, start=c(0,0))
+housePWR_hofDayTS <- ts(housePWR_hofDay[,3:5], 
+                        frequency=24, 
+                        start=c(0,0))
 plot(housePWR_hofDayTS, plot.type='s',
      #xaxp = c(0,48, 47),
      col=c('red', 'green', 'blue'),
@@ -536,6 +538,40 @@ hist(housePWR_qtrTS_HW_smoothing_forec$residuals)
 p-value = 0.2401 that indicate some little bit correlation is present jot very significant .The histogram shows it's not normally distributed(Value is not aggregating near to the zero )
 
 ## ARIMA Model
+###### Total Monthly kWh Consumption
+It is based on the assumption that over a preiod of times the current values are related or correlated with their immediate previous OR n previous values.
 ```{r ARIMA }
 
+df_arima<-(housePWR_mnthTS[,3]) 
+plot(df_arima)
+cycle(df_arima)
+#Box plot 
+boxplot(df_arima ~ cycle(df_arima))#Box plot across months will give us a sense on seasonal effect
+#This will fit in a line
+abline(reg=lm(df_arima ~ time(df_arima)))
+#we need to remove unequal variance.we do this using log function
+plot(log(df_arima))
+#Mean has to constant according to time (need to do untill unless mean to make constant)
+plot(diff(log(df_arima)))
+
+df_fit_arima_mnth_TS_auto<-auto.arima(df_arima)
+#will calculate everything automatic 
+
+#AR I MA
+#p  d q this value we have to get from the graph 
+#c(p,d,q)
+
+acf(df_arima) # determine the value of q=2
+#acf(diff(log(df_arima)))
+
+pacf(df_arima)  # determine the value of p=0
+df_fit_arima_mnth_TS<-arima(df_arima, c(0,0,2))
+
+df_fit_arima_mnth_TS_pred<-predict(df_fit_arima_mnth_TS,n.ahead = 1*11)
+
+ts.plot(df_arima,df_fit_arima_mnth_TS_pred)
+#pred<-2.718^df_fit_arima_mnth_TS_pred$df_fit_arima_mnth_TS_pred--if use log then
 ```
+Mean value is almost constant but variance is not the same
+
+# testing 
