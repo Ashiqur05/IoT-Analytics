@@ -70,9 +70,9 @@ head(newDF,2)
 #newDF <- rename(newDF, Kitchen_stuff = Sub_metering_1)
 ```
 
-##visualization 
-
+## visualization 
 One of the goals of subsetting for visualizations is to adjust granularity to maximize the information to be gained. Granularity describes the frequency of observations within a time series data set
+
 #### Convert DateTime from POSIXlt to POSIXct 
 Convert data type of new DateTime feature
 ```{r convert}
@@ -94,10 +94,11 @@ range(newDF$DateTime)
 ```
 
 ```{r Granularity}
-#plot(newDF$Kitchen_stuff)
+plot(newDF$Kitchen_stuff)
 head(newDF,2)
 ```
 Over 1,500,000 minutes from the beginning of 2007 though the end of 2009 have been plotted in this visualization.we are not getting any usefull information.
+
 ##### Subsetting and Meaningful Time Periods
 ```{r subset_week}
 ## Subset the second week of 2008 - All Observations
@@ -112,8 +113,8 @@ There are lots of patterns to be learned from a week, but the granularity has to
 ## Subset the second week of 2008 - All Observations
 houseDay <- filter(newDF, year(DateTime) == 2008 & week(DateTime) == 2 & day(DateTime)==9)
 ## Plot kitchen_stuff
-#plot(houseDay$Kitchen_stuff)
-#plot_ly(houseDay, x = ~houseDay$DateTime, y = ~houseDay$Kitchen_stuff, type = 'scatter', mode = 'lines')
+plot(houseDay$Kitchen_stuff)
+plot_ly(houseDay, x = ~houseDay$DateTime, y = ~houseDay$Kitchen_stuff, type = 'scatter', mode = 'lines')
 ```
 line plots and Plotly make much better visualizations than the basic plot function.
 
@@ -127,6 +128,7 @@ plot_ly(houseDay, x = ~houseDay$DateTime, y = ~houseDay$Kitchen_stuff, name = 'K
  xaxis = list(title = "Time"),
  yaxis = list (title = "Power (watt-hours)"))
 ```
+
 #### Reducing Granularity
 ```{r subset_day_3_10}
 houseDay_10 <- filter(newDF, year(DateTime) == 2008 & week(DateTime) == 2 & day(DateTime)==9 & (minute(DateTime) == 0 | minute(DateTime) == 10 | minute(DateTime) == 20 | minute(DateTime) == 30 | minute(DateTime) == 40 | minute(DateTime) == 50))
@@ -153,9 +155,10 @@ plot_ly(houseDay_W, x = ~houseDay_W$DateTime, y = ~houseDay_W$Kitchen_stuff, nam
  xaxis = list(title = "Time"),
  yaxis = list (title = "Power (watt-hours)"))
 ```
+
 ## Convert to Time Series and Plot
 
-###### Subset to one observation per week on Mondays at 8:00pm for 2007, 2008 and 2009
+##### Subset to one observation per week on Mondays at 8:00pm for 2007, 2008 and 2009
 
 ```{r house070809weekly}
 house070809weekly <-
@@ -174,8 +177,8 @@ autoplot(tsSM3_070809weekly, ts.colour = 'red', xlab = "Time", ylab = "Watt Hour
 plot.ts(tsSM3_070809weekly)
 
 ```
-#### Create monthly time series
 
+#### Create monthly time series
 ```{r house070809weekly_1}
 house_monthly <- filter(newDF,year(DateTime)==2009 & month(DateTime)==1) %>% 
         group_by(day(DateTime)) %>% 
@@ -186,10 +189,11 @@ tsSM1_house_monthly <- ts(house_monthly$kitchen,
                          frequency=365, 
                          start=c(2009,1),
                          end=c(2009,31))
-autoplot(tsSM1_house_monthly, ts.colour = 'red', xlab = "Time", ylab = "Watt Hours", main = "Kitchen_stuff")
+
+plot.ts(tsSM1_house_monthly, xlab = "Time", ylab = "Watt Hours", main = "Kitchen_stuff")
 #autoplot(tsSM3_070809weekly)
 ## Plot sub-meter 3 with plot.ts
-plot.ts(tsSM1_house_monthly)
+#plot.ts(tsSM1_house_monthly)
 
 ```
 
@@ -214,6 +218,7 @@ plot(housePWR_yrTS, plot.type='s', #xaxt='n',
 b <- c('Kitchen_stuff', 'Laundry', 'w_heater_AC')
 legend('topleft', b, col=c('red', 'green', 'blue'), lwd=2, bty='n')
 ```
+
 ##### Subset data by Semester and summarise total usage across the 3 submeters(Time series)
 ```{r housePWR_semstr}
   housePWR_semstr <- newDF %>%
@@ -267,6 +272,7 @@ minor.tick(nx=4)
 b <- c('Kitchen_stuff', 'Laundry', ' w_heater_AC')
 legend('topleft', b, col=c('red', 'green', 'blue'), lwd=2, bty='n')
 ```
+
 ##### Subset data by month and summarise total usage across the 3 submeters(Time series)
 ```{r housePWR_mnth}
 housePWR_mnth <- newDF %>%
@@ -278,7 +284,7 @@ head(housePWR_mnth)
 housePWR_mnthTS <- ts(housePWR_mnth[,3:5],
                       frequency = 12,
                       start=c(2007,1),
-                      end=c(2010))
+                      end=c(2009,12))
 plot(housePWR_mnthTS, 
      plot.type='s',
      xlim=c(2007, 2010),
@@ -289,6 +295,7 @@ minor.tick(nx=12)
 b <- c('Kitchen_stuff', 'Laundry', 'w_heater_AC')
 legend('topleft', b, col=c('red', 'green', 'blue'), lwd=2, bty='n')
 ```
+
 ##### Subset data by week of year and summarise total usage across the 3 submeters(Time series)
 ```{r housePWR_wkofYr}
 housePWR_wkofYr <- newDF %>%
@@ -317,6 +324,7 @@ legend('topleft', b, col=c('red', 'green', 'blue'), lwd=2, bty='n')
 
 
 ```
+
 ##### Subset data by day of week and summarise total usage across the 3 submeters(Time series)
 ```{r housePWR_dofWk }
 housePWR_dofWk <- newDF %>%
@@ -350,7 +358,6 @@ legend('topleft', b, col=c('red', 'green', 'blue'), lwd=2, bty='n')
 ```
 
 ##### Subset data by hour of day and summarise total usage across the 3 submeters(Time series)
-
 ```{r housePWR_hofDay }
 housePWR_hofDay <- newDF %>%
 
@@ -374,6 +381,7 @@ b <- c('Kitchen_stuff', 'Laundry', 'w_heater_AC')
 legend('topleft', b, col=c('red', 'green', 'blue'), lwd=2, bty='n')
 
 ```
+
 ##### Subset data by weekend of day and summarise total usage across the 3 submeters(Time series)
 ```{r }
 housePWR_wknd <- newDF %>%
@@ -427,6 +435,8 @@ plot.ts(housePWR_qtrTS_sma5)
 housePWR_qtrTS_sma7<-SMA(housePWR_qtrTS_log[,3],7)
 plot.ts(housePWR_qtrTS_sma7)
 #more period i am using more data point i will going to lose
+
+
 ```
 ## Exponential Smoothing
 ##### Fit Exponential Moving Average Model to Quarterly Time Series
@@ -453,7 +463,8 @@ housePWR_qtrTS_ema_75<-EMA(housePWR_qtrTS_log[,3],3,ratio = .75)
 plot.ts(housePWR_qtrTS_ema_75)
 #more period i am using more data point i will going to lose
 ```
-In this data set simple moving average is kind of a winner for me because with that i am able to see very clearly there is a trand that is present,there is some cyclic or random or seasonal that is present but with this Exponential Moving Average i could only see that probly there is a trand but there is a irregular component which is present in this time series.
+In this data set simple moving average is kind of a winner for me because with that i am able to see very clearly there is a trand that is present,there is some cyclic or random or seasonal that is present but with this Exponential Moving Average i could only see that probly there is a trand but there is an irregular component which is present in this time series.
+
 ## Decomposition
 Decomposing the time series means separating the time series into these three components:
 ```{r Decomposition}
@@ -468,17 +479,19 @@ summary(housePWR_qtrTS_decomp)
 housePWR_qtrTS_random <- (housePWR_qtrTS[,3]) - housePWR_qtrTS_decomp$random
 plot(housePWR_qtrTS_random)
 ```
+
 # Holt-Winter Forecasting
 To make forecasts using simple exponential smoothing, you can fit a simple exponential smoothing predictive model using the HoltWinters() function from the stats package for R. 
 ```{r remove_seasonal}
-plot.ts(housePWR_qtrTS)
+#plot.ts(housePWR_qtrTS)
 #Remove Seasonal Components
 housePWR_qtrTS_seasonal <- (housePWR_qtrTS[,3]) - housePWR_qtrTS_decomp$seasonal
 plot.ts(housePWR_qtrTS_seasonal)
-autoplot(housePWR_qtrTS_seasonal)
+#autoplot(housePWR_qtrTS_seasonal)
 ## Test Seasonal Adjustment by running Decompose again. Note the very, very small scale for Seasonal
 plot(decompose(housePWR_qtrTS_seasonal))
 ```
+
 Yes there is a seasonal line, but look at the scale for the seasonal section. -1e-15 through 5e-16. That's a decimal with 15 zeros before 1. A very very small number indeed. For all practical purposes the seasonality has been removed. 
 
 ##### HoltWinters Simple Exponential Smoothing
@@ -487,6 +500,8 @@ Yes there is a seasonal line, but look at the scale for the seasonal section. -1
 plot.ts(housePWR_qtrTS[,3])
 housePWR_qtrTS_HW_smoothing<-HoltWinters(housePWR_qtrTS[,3], beta=FALSE, gamma=FALSE)
 housePWR_qtrTS_HW_smoothing
+
+checkresiduals(housePWR_qtrTS_HW_smoothing)
 
 housePWR_qtrTS_HW_smoothing$fitted
 plot(housePWR_qtrTS_HW_smoothing)
@@ -501,6 +516,7 @@ plot.ts(housePWR_qtrTS_HW_smoothing_forec$residuals)
 
 
 ```
+
 Less weight to the recent value and more weight to the previous value 
 
 ## Time series tasting
@@ -535,43 +551,326 @@ Box.test(housePWR_qtrTS_HW_smoothing_forec$residuals,
 plot.ts(housePWR_qtrTS_HW_smoothing_forec$residuals)
 hist(housePWR_qtrTS_HW_smoothing_forec$residuals)
 ```
+
 p-value = 0.2401 that indicate some little bit correlation is present jot very significant .The histogram shows it's not normally distributed(Value is not aggregating near to the zero )
 
 ## ARIMA Model
-###### Total Monthly kWh Consumption
+#### Total Monthly kWh Consumption(water heater)
 It is based on the assumption that over a preiod of times the current values are related or correlated with their immediate previous OR n previous values.
-```{r ARIMA }
+```{r ARIMA_w_heater_AC }
 
-df_arima<-(housePWR_mnthTS[,3]) 
-plot(df_arima)
-cycle(df_arima)
+df_arima_w_heater_AC<-(housePWR_mnthTS[,3]) 
+plot(df_arima_w_heater_AC)
+#cycle(df_arima_w_heater_AC)
 #Box plot 
-boxplot(df_arima ~ cycle(df_arima))#Box plot across months will give us a sense on seasonal effect
+boxplot(df_arima_w_heater_AC ~ cycle(df_arima_w_heater_AC))#Box plot across months will give us a sense on seasonal effect
 #This will fit in a line
-abline(reg=lm(df_arima ~ time(df_arima)))
+#abline(reg=lm(df_arima ~ time(df_arima)))
 #we need to remove unequal variance.we do this using log function
-plot(log(df_arima))
+plot(log(df_arima_w_heater_AC))
 #Mean has to constant according to time (need to do untill unless mean to make constant)
-plot(diff(log(df_arima)))
+plot(diff(log(df_arima_w_heater_AC)))
 
-df_fit_arima_mnth_TS_auto<-auto.arima(df_arima)
+df_fit_arima_mnth_TS_auto<-auto.arima(df_arima_w_heater_AC)
 #will calculate everything automatic 
 
 #AR I MA
 #p  d q this value we have to get from the graph 
 #c(p,d,q)
 
-acf(df_arima) # determine the value of q=2
+acf(df_arima_w_heater_AC) # determine the value of q=2
 #acf(diff(log(df_arima)))
 
-pacf(df_arima)  # determine the value of p=0
-df_fit_arima_mnth_TS<-arima(df_arima, c(0,0,2))
+pacf(df_arima_w_heater_AC)  # determine the value of p=0
+df_fit_arima_mnth_TS<-arima(df_arima_w_heater_AC, c(0,0,2))
 
-df_fit_arima_mnth_TS_pred<-predict(df_fit_arima_mnth_TS,n.ahead = 1*11)
+df_fit_arima_mnth_TS_pred<-predict(df_fit_arima_mnth_TS,n.ahead = 1*12)
 
-ts.plot(df_arima,df_fit_arima_mnth_TS_pred)
+ts.plot(df_arima_w_heater_AC,df_fit_arima_mnth_TS_pred$pred)
 #pred<-2.718^df_fit_arima_mnth_TS_pred$df_fit_arima_mnth_TS_pred--if use log then
 ```
 Mean value is almost constant but variance is not the same
 
-# testing 
+#### Total Monthly kWh Consumption(kitchen)
+```{r ARIMA_Kitchen_stuff }
+
+df_arima_Kitchen_stuff<-(housePWR_mnthTS[,1]) 
+plot(df_arima_Kitchen_stuff)
+#cycle(df_arima_Kitchen_stuff)
+#Box plot 
+boxplot(df_arima_Kitchen_stuff ~ cycle(df_arima_Kitchen_stuff))#Box plot across months will give us a sense on seasonal effect
+#This will fit in a line
+#abline(reg=lm(df_arima_Kitchen_stuff ~ time(df_arima)))
+#we need to remove unequal variance.we do this using log function
+plot(log(df_arima_Kitchen_stuff))
+#Mean has to constant according to time (need to do untill unless mean to make constant)
+plot(diff(log(df_arima_Kitchen_stuff)))
+
+df_fit_arima_mnth_TS_auto<-auto.arima(df_arima_w_heater_AC)
+#will calculate everything automatic 
+
+#AR I MA
+#p  d q this value we have to get from the graph 
+#c(p,d,q)
+
+acf(diff(log(df_arima_Kitchen_stuff))) # determine the value of q=2
+#acf(diff(log(df_arima)))
+
+pacf(diff(log(df_arima_Kitchen_stuff)))  # determine the value of p=0
+df_fit_arima_mnth_kitc<-arima(log(df_arima_Kitchen_stuff), c(1,1,2))
+
+
+df_fit_arima_mnth_TS_pred<-predict(df_fit_arima_mnth_kitc,n.ahead = 1*12)
+
+df_fit_arima_mnth_TS_pred_no_log<-2.718^df_fit_arima_mnth_TS_pred$pred
+
+ts.plot(df_arima_Kitchen_stuff,2.718^df_fit_arima_mnth_TS_pred$pred,log="y",lty=c(1,3))
+#pred<-2.718^df_fit_arima_mnth_TS_pred$df_fit_arima_mnth_TS_pred--if use log then
+```
+
+#### Total Monthly kWh Consumption(Laundray)
+```{r ARIMA_Laundray }
+
+df_arima_Laundry<-(housePWR_mnthTS[,2]) 
+plot(df_arima_Laundry)
+#cycle(df_arima_Laundray)
+#Box plot 
+boxplot(df_arima_Laundry ~ cycle(df_arima_Laundry))#Box plot across months will give us a sense on seasonal effect
+#This will fit in a line
+#abline(reg=lm(df_arima_Kitchen_stuff ~ time(df_arima)))
+#we need to remove unequal variance.we do this using log function
+plot(log(df_arima_Laundry))
+
+#Mean has to constant according to time (need to do untill unless mean to make constant)
+plot(diff(log(df_arima_Laundry)))
+
+df_fit_arima_mnth_TS_auto<-auto.arima(df_arima_Laundry)
+#will calculate everything automatic 
+
+#AR I MA
+#p  d q this value we have to get from the graph 
+#c(p,d,q)
+
+acf(diff(log(df_arima_Laundry))) # determine the value of q=3
+#acf(diff(log(df_arima)))
+
+pacf(diff(log(df_arima_Laundry)))  # determine the value of p=2
+df_fit_arima_mnth_laun<-arima(log(df_arima_Laundry), c(2,1,3))
+
+
+df_fit_arima_mnth_laun_pred<-predict(df_fit_arima_mnth_laun,n.ahead = 1*12)
+
+df_fit_arima_mnth_laun_pred_no_log<-2.718^df_fit_arima_mnth_laun_pred$pred
+
+ts.plot(df_arima_Laundry,2.718^df_fit_arima_mnth_laun_pred$pred,log="y",lty=c(1,3))
+#pred<-2.718^df_fit_arima_mnth_TS_pred$df_fit_arima_mnth_TS_pred--if use log then
+```
+
+## testing Arima model(water Heater)
+```{r testing_arima_wh}
+df_arima_7_8<-ts(df_arima_w_heater_AC,frequency = 12,
+                 start = c(2007,1),
+                 end = c(2008,12))
+df_arima_7_8_fit<-arima(df_arima_7_8, c(0,0,2))
+
+df_arima_7_8_fit_pred<-predict(df_arima_7_8_fit,n.ahead = 1*12)#2009 predicted value
+df_arima_7_8_fit_pred_p<-(df_arima_7_8_fit_pred$pred)
+
+
+df_arima_7_8_fit_pred_round<-round(df_arima_7_8_fit_pred_p,digits = 0)
+df_arima_7_8_fit_pred_round
+w_heater_AC<-tail(df_arima_w_heater_AC,12)
+w_heater_AC
+
+```
+## testing Arima model(kitchen)
+```{r testing_arima_kit}
+df_arima_7_8_kit<-ts(df_arima_Kitchen_stuff,frequency = 12,
+                 start = c(2007,1),
+                 end = c(2008,12))
+df_arima_7_8_Arima_kit<-arima(log(df_arima_7_8_kit), c(1,1,2))
+
+df_arima_7_8_fit_pred_kit<-predict(df_arima_7_8_Arima_kit,n.ahead = 1*12)#2009 predicted value
+df_arima_7_8_fit_pred_p_kit<-(df_arima_7_8_fit_pred_kit$pred)
+
+df_arima_7_8_fit_pred_p_kit_no_log<-2.718^df_arima_7_8_fit_pred_p_kit
+df_arima_7_8_fit_pred_p_kit_no_log_round<-round(df_arima_7_8_fit_pred_p_kit_no_log,digits = 0)
+df_arima_7_8_fit_pred_p_kit_no_log_round
+kitchen<-tail(df_arima_Kitchen_stuff,12)
+kitchen
+```
+## testing Arima model(Laundry)
+```{r testing_arima_Laundry}
+df_arima_7_8_laun<-ts(df_arima_Laundry,frequency = 12,
+                 start = c(2007,1),
+                 end = c(2008,12))
+df_arima_fit_7_8_laun<-arima(log(df_arima_7_8_laun), c(2,1,3))
+
+df_arima_7_8_fit_pred_laun<-predict(df_arima_fit_7_8_laun,n.ahead = 1*12)#2009 predicted value
+df_arima_7_8_fit_pred_p_laun<-(df_arima_7_8_fit_pred_laun$pred)
+
+df_arima_7_8_fit_pred_p_laun_no_log<-2.718^df_arima_7_8_fit_pred_p_laun
+df_arima_7_8_fit_pred_p_laun_no_log_round<-round(df_arima_7_8_fit_pred_p_laun_no_log,digits = 0)
+df_arima_7_8_fit_pred_p_laun_no_log_round
+Laundra_y<-tail(df_arima_Laundry,12)
+Laundra_y
+```
+##  Forecast ARIMA model(water heater)
+```{r Forcast_arima_wh_ac}
+#will calculate everything automatic 
+df_fit_arima_mnth_TS_auto<-auto.arima(df_arima_w_heater_AC)
+Box.test(df_fit_arima_mnth_TS_auto$residuals,
+         lag=20,
+         type="Ljung-Box")
+hist(df_fit_arima_mnth_TS_auto$residuals)
+#lines(density(df_fit_arima_mnth_TS_auto$residuals))
+checkresiduals(df_fit_arima_mnth_TS_auto)
+
+df_fit_arima_mnth_TS_auto_forecast<-forecast(df_fit_arima_mnth_TS_auto,h=12)
+autoplot(df_fit_arima_mnth_TS_auto_forecast)
+accuracy(df_fit_arima_mnth_TS_auto_forecast)
+```
+
+##  Forecast ARIMA model(kitchen)
+```{r Forcast_arima_kit}
+#will calculate everything automatic 
+df_fit_arima_mnth_kit_auto<-auto.arima(df_arima_Kitchen_stuff)
+Box.test(df_fit_arima_mnth_kit_auto$residuals,
+         lag=20,
+         type="Ljung-Box")
+hist(df_fit_arima_mnth_kit_auto$residuals)
+#lines(density(df_fit_arima_mnth_TS_auto$residuals))
+checkresiduals(df_fit_arima_mnth_kit_auto)
+
+df_fit_arima_mnth_kit_auto_forecast<-forecast(df_fit_arima_mnth_kit_auto,h=12)
+autoplot(df_fit_arima_mnth_kit_auto_forecast)
+accuracy(df_fit_arima_mnth_kit_auto_forecast)
+```
+
+
+##  Forecast ARIMA model(Laundry)
+```{r Forcast_arima_laun}
+#will calculate everything automatic 
+df_fit_arima_mnth_laun_auto<-auto.arima(df_arima_Laundry)
+Box.test(df_fit_arima_mnth_laun_auto$residuals,
+         lag=20,
+         type="Ljung-Box")
+hist(df_fit_arima_mnth_laun_auto$residuals)
+#lines(density(df_fit_arima_mnth_TS_auto$residuals))
+checkresiduals(df_fit_arima_mnth_laun_auto)
+
+df_fit_arima_mnth_laun_auto_forecast<-forecast(df_fit_arima_mnth_laun_auto,h=12)
+autoplot(df_fit_arima_mnth_laun_auto_forecast)
+accuracy(df_fit_arima_mnth_laun_auto_forecast)
+```
+
+## Fit Linear Regression Model to Monthly Time Series(Water_heater_AC)
+```{r Linear Regression_wh_ac}
+fit2 <- tslm(housePWR_mnthTS[,3] ~ trend + season)
+y <- forecast(fit2,h=12, level=c(80,95))
+plot(y, showgap=FALSE, include=36,
+  #shadecols=c('slategray3','slategray'),
+  xlab ='Year',
+  ylab=' kWh',
+  main='12-Month Forecast of Monthly Energy Consumption')
+minor.tick(nx=6)
+
+accuracy(y)
+summary(y)
+summary(fit2)
+
+#scatterplot of predicted vs actual
+plot.ts(x=fit2$fitted.values, y=housePWR_mnthTS[,3], xy.lines = FALSE,
+        xy.labels = FALSE,
+        xlab='Fitted Value',
+        ylab='Actual',
+        main='Monthly Predicted vs. Actual Values')
+#abline(0,1, col='blue')
+
+plot.ts(x=fit2$fitted.values, y=fit2$residuals, xy.lines=FALSE,
+        xy.labels = FALSE,
+        xlab='Predicted Value',
+        ylab='Residuals',
+        main='Monthly Predicted vs. Residuals')
+#abline(0,0, lty=2, col='grey')
+
+qqnorm(fit2$residuals, main='Monthly Q-Q Plot')
+#qqline(fit2$residuals)
+#-Summary analysis of residuals for monthly linear model
+checkresiduals(fit2)
+
+```
+
+## Fit Linear Regression Model to Monthly Time Series(Kitchen)
+```{r Linear Regression_kitchen}
+fit2_kit <- tslm(housePWR_mnthTS[,1] ~ trend + season)
+kit <- forecast(fit2_kit,h=12, level=c(80,95))
+plot(kit, showgap=FALSE, include=36,
+  #shadecols=c('slategray3','slategray'),
+  xlab ='Year',
+  ylab=' kWh',
+  main='12-Month Forecast of Monthly Energy Consumption(Kitchen)')
+minor.tick(nx=6)
+
+accuracy(kit)
+summary(kit)
+summary(fit2_kit)
+
+#scatterplot of predicted vs actual
+plot.ts(x=fit2_kit$fitted.values, y=housePWR_mnthTS[,1], xy.lines = FALSE,
+        xy.labels = FALSE,
+        xlab='Fitted Value',
+        ylab='Actual',
+        main='Monthly Predicted vs. Actual Values')
+#abline(0,1, col='blue')
+
+plot.ts(x=fit2_kit$fitted.values, y=fit2$residuals, xy.lines=FALSE,
+        xy.labels = FALSE,
+        xlab='Predicted Value',
+        ylab='Residuals',
+        main='Monthly Predicted vs. Residuals')
+#abline(0,0, lty=2, col='grey')
+
+qqnorm(fit2_kit$residuals, main='Monthly Q-Q Plot')
+#qqline(fit2$residuals)
+#-Summary analysis of residuals for monthly linear model
+checkresiduals(fit2_kit)
+
+```
+
+## Fit Linear Regression Model to Monthly Time Series(Laundry)
+```{r Linear Regression_Laundry}
+fit2_laun <- tslm(housePWR_mnthTS[,2] ~ trend + season)
+laun <- forecast(fit2_laun,h=12, level=c(80,95))
+plot(laun, showgap=FALSE, include=36,
+  shadecols=c('slategray3','slategray'),
+  xlab ='Year',
+  ylab=' kWh',
+  main='12-Month Forecast of Monthly Energy Consumption(Laundry)')
+minor.tick(nx=6)
+
+accuracy(laun)
+summary(laun)
+summary(fit2_laun)
+
+#scatterplot of predicted vs actual
+plot.ts(x=fit2_laun$fitted.values, y=housePWR_mnthTS[,2], xy.lines = FALSE,
+        xy.labels = FALSE,
+        xlab='Fitted Value',
+        ylab='Actual',
+        main='Monthly Predicted vs. Actual Values')
+#abline(0,1, col='blue')
+
+plot.ts(x=fit2_laun$fitted.values, y=fit2_laun$residuals, xy.lines=FALSE,
+        xy.labels = FALSE,
+        xlab='Predicted Value',
+        ylab='Residuals',
+        main='Monthly Predicted vs. Residuals')
+#abline(0,0, lty=2, col='grey')
+
+qqnorm(fit2_laun$residuals, main='Monthly Q-Q Plot')
+#qqline(fit2$residuals)
+#-Summary analysis of residuals for monthly linear model
+checkresiduals(fit2_laun)
+
+```
