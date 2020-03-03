@@ -1,5 +1,5 @@
 ## Smart Submeters
-# Explore and Visualize Energy Consumption with R and Tableau
+# Explore and Visualize Energy Consumption with R 
 IOT ANALYTICS is a fictive company. I am working as a Data Scientist for this company to help a client which is interested to use ML for their business.
 
 A regional home developer wants to use data analytics for a new set of electrical sub-metering devices for power management in Smart Homes. Installing these submeters could be a big step towards the developer's goal of offering highly efficient Smart Homes.
